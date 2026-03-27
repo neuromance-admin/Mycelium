@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./App.css";
+import { Terminal } from "./Terminal";
 
 interface Vault {
   id: string;
@@ -16,7 +17,7 @@ const MOCK_VAULTS: Vault[] = [
   {
     id: "MYC-74832",
     name: "VMD-Orchestrator",
-    path: "~/Documents/NeuromanceCo/Obsidian Vaults/VMD-Orchestrator",
+    path: "/Users/douglassimoes/Documents/NeuromanceCo/Obsidian Vaults/VMD-Orchestrator",
     health: "healthy",
     nodeCount: 38,
     lastSession: "2026-03-27",
@@ -26,7 +27,7 @@ const MOCK_VAULTS: Vault[] = [
   {
     id: "MYC-74831",
     name: "Mycelium-Vault",
-    path: "~/Documents/NeuromanceCo/Obsidian Vaults/Mycelium-Vault",
+    path: "/Users/douglassimoes/Documents/NeuromanceCo/Obsidian Vaults/Mycelium-Vault",
     health: "healthy",
     nodeCount: 52,
     lastSession: "2026-03-24",
@@ -140,39 +141,6 @@ function VaultRegistry({
   );
 }
 
-function Terminal({ activeVault }: { activeVault: Vault | null }) {
-  return (
-    <div className="terminal-panel">
-      <div className="terminal-header">
-        <span className="terminal-title">
-          {activeVault ? `Terminal — ${activeVault.name}` : "Terminal"}
-        </span>
-        {activeVault && (
-          <span className="terminal-vault-id">{activeVault.id}</span>
-        )}
-      </div>
-      <div className="terminal-body">
-        {activeVault ? (
-          <>
-            <div className="terminal-line terminal-line--cmd">
-              $ claude --project .
-            </div>
-            <div className="terminal-line terminal-line--output">
-              {activeVault.aiName} loaded. Running Spore-v{activeVault.sporeVersion}. Ready.
-            </div>
-            <div className="terminal-line terminal-line--cursor">
-              $ <span className="cursor">▋</span>
-            </div>
-          </>
-        ) : (
-          <div className="terminal-line terminal-line--hint">
-            Select a vault and click Terminal to begin a session.
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function FirstRun({ onAdd }: { onAdd: () => void }) {
   return (
@@ -212,7 +180,7 @@ export default function App() {
         onLaunchTerminal={(v) => setActiveVaultId(v.id)}
         activeVaultId={activeVaultId}
       />
-      <Terminal activeVault={activeVault} />
+      <Terminal activeVault={activeVault ? { id: activeVault.id, name: activeVault.name, path: activeVault.path } : null} />
     </div>
   );
 }
