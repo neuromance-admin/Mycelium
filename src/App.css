@@ -7,16 +7,16 @@
 }
 
 :root {
-  --bg: #07100f;
-  --bg-surface: #0c1a19;
-  --bg-raised: #122321;
-  --bg-hover: #192e2b;
-  --border: #1e3532;
-  --border-subtle: #122321;
+  --bg: #162926;
+  --bg-surface: #1e3733;
+  --bg-raised: #264542;
+  --bg-hover: #2e514d;
+  --border: #366460;
+  --border-subtle: #264542;
 
-  --text: #dff0ee;
-  --text-muted: #5f9490;
-  --text-dim: #355550;
+  --text: #edfaf8;
+  --text-muted: #8eccc6;
+  --text-dim: #5a9993;
 
   --accent: #14b8a6;
   --accent-hover: #2dd4bf;
@@ -25,7 +25,7 @@
   --amber: #f59e0b;
   --red: #ef4444;
 
-  --terminal-bg: #050e0d;
+  --terminal-bg: #111f1e;
   --terminal-text: #a3e635;
   --terminal-muted: #5f9490;
   --terminal-cursor: #14b8a6;
@@ -58,7 +58,7 @@ html, body, #root {
     "registry terminal";
   height: 100vh;
   overflow: hidden;
-  background: linear-gradient(160deg, #07100f 0%, #091614 50%, #07110f 100%);
+  background: linear-gradient(160deg, #162926 0%, #1a2e2b 50%, #162926 100%);
 }
 
 .top-bar        { grid-area: topbar; }
@@ -72,7 +72,7 @@ html, body, #root {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  background: linear-gradient(90deg, #0c1a19 0%, #0a1715 100%);
+  background: linear-gradient(90deg, #1e3733 0%, #1a3330 100%);
   border-bottom: 1px solid var(--border);
   gap: 14px;
   height: var(--top-bar-height);
@@ -345,7 +345,7 @@ button {
   align-items: center;
   gap: 12px;
   padding: 8px 20px;
-  background: linear-gradient(90deg, #0c1a19 0%, #091614 100%);
+  background: linear-gradient(90deg, #1e3733 0%, #1a3330 100%);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }

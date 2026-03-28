@@ -28,12 +28,12 @@ export function Terminal({ activeVault, launchMode }: Props) {
 
     const term = new XTerm({
       theme: {
-        background: "#050e0d",
-        foreground: "#dff0ee",
+        background: "#111f1e",
+        foreground: "#e8f5f3",
         cursor: "#14b8a6",
-        cursorAccent: "#050e0d",
-        selectionBackground: "#1e3532",
-        black: "#0c1a19",
+        cursorAccent: "#0c1917",
+        selectionBackground: "#2a4f4a",
+        black: "#172b28",
         red: "#ef4444",
         green: "#22c55e",
         yellow: "#f59e0b",
@@ -45,20 +45,25 @@ export function Terminal({ activeVault, launchMode }: Props) {
         brightGreen: "#4ade80",
         brightWhite: "#f0fafa",
       },
-      fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace',
-      fontSize: 13,
-      lineHeight: 1.5,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontSize: 15,
+      lineHeight: 1.3,
       cursorBlink: true,
       cursorStyle: "block",
       scrollback: 2000,
       allowTransparency: false,
-      padding: 10,
     });
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
-    requestAnimationFrame(() => fitAddon.fit());
+    requestAnimationFrame(() => {
+      fitAddon.fit();
+      const dims = fitAddon.proposeDimensions();
+      if (dims) {
+        invoke("pty_resize", { cols: dims.cols, rows: dims.rows }).catch(() => {});
+      }
+    });
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
@@ -73,9 +78,15 @@ export function Terminal({ activeVault, launchMode }: Props) {
       invoke("pty_write", { data }).catch(console.error);
     });
 
-    // Refit on container resize
+    // Refit on container resize and sync PTY dimensions
     const observer = new ResizeObserver(() => {
-      fitAddon.fit();
+      requestAnimationFrame(() => {
+        fitAddon.fit();
+        const dims = fitAddon.proposeDimensions();
+        if (dims) {
+          invoke("pty_resize", { cols: dims.cols, rows: dims.rows }).catch(() => {});
+        }
+      });
     });
     observer.observe(containerRef.current);
 
