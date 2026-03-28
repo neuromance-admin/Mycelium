@@ -5,22 +5,25 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
 
-interface Vault {
+export interface Session {
   id: string;
-  name: string;
-  path: string;
+  vaultId: string;
+  vaultName: string;
+  mode: "shell" | "connect";
+  colour: string;
+  vaultPath: string;
 }
 
 interface Props {
-  activeVault: Vault | null;
-  launchMode: "shell" | "connect";
+  session: Session | null;
 }
 
-export function Terminal({ activeVault, launchMode }: Props) {
+export function Terminal({ session }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const activeSessionRef = useRef<{ vaultId: string; mode: string } | null>(null);
+  // Track which session IDs have already been spawned
+  const spawnedRef = useRef<Set<string>>(new Set());
 
   // Mount xterm once
   useEffect(() => {
@@ -59,76 +62,119 @@ export function Terminal({ activeVault, launchMode }: Props) {
     term.open(containerRef.current);
     requestAnimationFrame(() => {
       fitAddon.fit();
-      const dims = fitAddon.proposeDimensions();
-      if (dims) {
-        invoke("pty_resize", { cols: dims.cols, rows: dims.rows }).catch(() => {});
-      }
     });
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Stream PTY output into terminal
-    const unlistenPromise = listen<string>("pty-data", (event) => {
-      term.write(event.payload);
-    });
-
-    // Send keystrokes to PTY
-    term.onData((data) => {
-      invoke("pty_write", { data }).catch(console.error);
-    });
-
-    // Refit on container resize and sync PTY dimensions
     const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         fitAddon.fit();
-        const dims = fitAddon.proposeDimensions();
-        if (dims) {
-          invoke("pty_resize", { cols: dims.cols, rows: dims.rows }).catch(() => {});
-        }
       });
     });
     observer.observe(containerRef.current);
 
     return () => {
-      unlistenPromise.then((fn) => fn());
       observer.disconnect();
       term.dispose();
     };
   }, []);
 
-  // Spawn a new PTY when active vault or mode changes
+  // When session changes, attach listener and spawn PTY if new
   useEffect(() => {
-    if (!activeVault) return;
-    const sessionKey = `${activeVault.id}:${launchMode}`;
-    if (sessionKey === `${activeSessionRef.current?.vaultId}:${activeSessionRef.current?.mode}`) return;
-    activeSessionRef.current = { vaultId: activeVault.id, mode: launchMode };
+    if (!session) return;
 
-    xtermRef.current?.clear();
+    const term = xtermRef.current;
+    if (!term) return;
 
-    const dims = fitAddonRef.current?.proposeDimensions();
-    invoke("pty_create", {
-      vaultPath: activeVault.path,
-      cols: dims?.cols ?? 80,
-      rows: dims?.rows ?? 24,
-      launchClaude: launchMode === "connect",
-    }).catch((err) => {
-      xtermRef.current?.writeln(`\r\nFailed to start terminal: ${err}\r\n`);
+    term.clear();
+
+    // Attach listener for this session's PTY data
+    const eventName = `pty-data-${session.id}`;
+    const unlistenPromise = listen<string>(eventName, (event) => {
+      term.write(event.payload);
     });
-  }, [activeVault, launchMode]);
+
+    // Wire up keyboard input to this session
+    const onDataDisposable = term.onData((data) => {
+      invoke("pty_write", { sessionId: session.id, data }).catch(console.error);
+    });
+
+    // Spawn PTY only once per session ID
+    if (!spawnedRef.current.has(session.id)) {
+      spawnedRef.current.add(session.id);
+
+      const dims = fitAddonRef.current?.proposeDimensions();
+      invoke("pty_create", {
+        sessionId: session.id,
+        vaultPath: session.vaultPath,
+        cols: dims?.cols ?? 80,
+        rows: dims?.rows ?? 24,
+        launchClaude: session.mode === "connect",
+      }).catch((err) => {
+        term.writeln(`\r\nFailed to start terminal: ${err}\r\n`);
+      });
+
+      // Initial resize after spawn
+      requestAnimationFrame(() => {
+        fitAddonRef.current?.fit();
+        const d = fitAddonRef.current?.proposeDimensions();
+        if (d) {
+          invoke("pty_resize", {
+            sessionId: session.id,
+            cols: d.cols,
+            rows: d.rows,
+          }).catch(() => {});
+        }
+      });
+    }
+
+    // Resize observer scoped to this session
+    const container = containerRef.current;
+    let resizeObserver: ResizeObserver | null = null;
+    if (container) {
+      resizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(() => {
+          fitAddonRef.current?.fit();
+          const d = fitAddonRef.current?.proposeDimensions();
+          if (d) {
+            invoke("pty_resize", {
+              sessionId: session.id,
+              cols: d.cols,
+              rows: d.rows,
+            }).catch(() => {});
+          }
+        });
+      });
+      resizeObserver.observe(container);
+    }
+
+    return () => {
+      unlistenPromise.then((fn) => fn());
+      onDataDisposable.dispose();
+      resizeObserver?.disconnect();
+    };
+  }, [session?.id]);
+
+  const headerStyle = session
+    ? {
+        background: `linear-gradient(90deg, color-mix(in srgb, ${session.colour} 8%, #1e3733) 0%, #1a3330 100%)`,
+        borderLeft: `3px solid ${session.colour}`,
+      }
+    : {};
 
   return (
     <div className="terminal-panel">
-      <div className="terminal-header">
+      <div className="terminal-header" style={headerStyle}>
         <span className="terminal-title">
-          {activeVault
-            ? launchMode === "connect"
-              ? `${activeVault.name} — Connected`
-              : `Terminal — ${activeVault.name}`
+          {session
+            ? session.mode === "connect"
+              ? `${session.vaultName} — Connected`
+              : `Terminal — ${session.vaultName}`
             : "Terminal"}
         </span>
-        {activeVault && (
-          <span className="terminal-vault-id">{activeVault.id}</span>
+        {session && (
+          <span className="terminal-vault-id">{session.vaultId}</span>
         )}
       </div>
       <div ref={containerRef} className="terminal-body" />
