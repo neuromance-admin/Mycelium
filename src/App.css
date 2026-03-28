@@ -7,35 +7,34 @@
 }
 
 :root {
-  --bg: #0e0e10;
-  --bg-surface: #18181b;
-  --bg-raised: #222226;
-  --bg-hover: #2a2a2f;
-  --border: #2e2e33;
-  --border-subtle: #222226;
+  --bg: #07100f;
+  --bg-surface: #0c1a19;
+  --bg-raised: #122321;
+  --bg-hover: #192e2b;
+  --border: #1e3532;
+  --border-subtle: #122321;
 
-  --text: #e4e4e7;
-  --text-muted: #71717a;
-  --text-dim: #52525b;
+  --text: #dff0ee;
+  --text-muted: #5f9490;
+  --text-dim: #355550;
 
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
+  --accent: #14b8a6;
+  --accent-hover: #2dd4bf;
 
   --green: #22c55e;
   --amber: #f59e0b;
   --red: #ef4444;
 
-  --terminal-bg: #0a0a0c;
+  --terminal-bg: #050e0d;
   --terminal-text: #a3e635;
-  --terminal-muted: #71717a;
-  --terminal-cursor: #a3e635;
+  --terminal-muted: #5f9490;
+  --terminal-cursor: #14b8a6;
 
-  --top-bar-height: 48px;
-  --terminal-height: 180px;
+  --top-bar-height: 60px;
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
-  --radius: 8px;
-  --radius-sm: 4px;
+  --radius: 14px;
+  --radius-sm: 8px;
 }
 
 html, body, #root {
@@ -44,7 +43,7 @@ html, body, #root {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -53,12 +52,13 @@ html, body, #root {
 .app-shell {
   display: grid;
   grid-template-rows: var(--top-bar-height) 1fr;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: 300px 1fr;
   grid-template-areas:
     "topbar topbar"
     "registry terminal";
   height: 100vh;
   overflow: hidden;
+  background: linear-gradient(160deg, #07100f 0%, #091614 50%, #07110f 100%);
 }
 
 .top-bar        { grid-area: topbar; }
@@ -71,10 +71,10 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  background: var(--bg-surface);
+  padding: 0 20px;
+  background: linear-gradient(90deg, #0c1a19 0%, #0a1715 100%);
   border-bottom: 1px solid var(--border);
-  gap: 12px;
+  gap: 14px;
   height: var(--top-bar-height);
   -webkit-app-region: drag;
 }
@@ -83,13 +83,13 @@ html, body, #root {
 .top-bar-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   -webkit-app-region: no-drag;
 }
 
 .app-name {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 16px;
   color: var(--text);
   letter-spacing: -0.01em;
   margin-right: 4px;
@@ -101,9 +101,9 @@ html, body, #root {
   border-radius: var(--radius-sm);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 12px;
-  padding: 5px 10px;
-  width: 200px;
+  font-size: 14px;
+  padding: 6px 12px;
+  width: 220px;
   outline: none;
   transition: border-color 0.15s;
 }
@@ -117,7 +117,7 @@ html, body, #root {
 }
 
 .vault-count {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
@@ -125,7 +125,7 @@ html, body, #root {
 
 button {
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
   border: none;
   outline: none;
@@ -136,7 +136,7 @@ button {
   background: var(--accent);
   color: #fff;
   border-radius: var(--radius-sm);
-  padding: 5px 12px;
+  padding: 6px 16px;
   font-weight: 500;
 }
 
@@ -145,17 +145,17 @@ button {
 }
 
 .btn-primary--large {
-  padding: 10px 28px;
-  font-size: 14px;
+  padding: 12px 32px;
+  font-size: 16px;
   border-radius: var(--radius);
 }
 
 .btn-icon {
   background: transparent;
   color: var(--text-muted);
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .btn-icon:hover {
@@ -167,8 +167,9 @@ button {
   background: var(--bg-raised);
   color: var(--text-muted);
   border-radius: var(--radius-sm);
-  padding: 4px 12px;
+  padding: 5px 14px;
   border: 1px solid var(--border);
+  font-size: 13px;
 }
 
 .btn-action:hover {
@@ -197,8 +198,8 @@ button {
 
 .health-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -210,9 +211,9 @@ button {
 .health-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  padding: 3px 10px;
+  gap: 7px;
+  font-size: 13px;
+  padding: 4px 12px;
   border-radius: 99px;
   border: 1px solid var(--border);
   background: var(--bg);
@@ -226,15 +227,16 @@ button {
 
 .vault-registry {
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--bg);
+  background: transparent;
+  border-right: 1px solid var(--border);
 }
 
 .vault-registry::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .vault-registry::-webkit-scrollbar-track {
@@ -256,22 +258,25 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .vault-card:hover {
   border-color: var(--border);
+  background: var(--bg-raised);
 }
 
 .vault-card--active {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg-surface));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
 }
 
 .vault-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .vault-card-identity {
@@ -288,7 +293,7 @@ button {
 
 .vault-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text);
 }
 
@@ -300,29 +305,30 @@ button {
 
 .vault-card-meta {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 3px;
   font-size: 12px;
   color: var(--text-muted);
 }
 
 .meta-sep {
-  color: var(--text-dim);
+  display: none;
 }
 
 .vault-path {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 400px;
+  max-width: 100%;
 }
 
 .vault-card-actions {
   display: flex;
   gap: 6px;
+  margin-top: 2px;
 }
 
 /* ─── Terminal ───────────────────────────────────────────────────── */
@@ -331,36 +337,34 @@ button {
   display: flex;
   flex-direction: column;
   background: var(--terminal-bg);
-  border-left: 1px solid var(--border);
   overflow: hidden;
 }
 
 .terminal-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 16px;
-  background: var(--bg-surface);
+  gap: 12px;
+  padding: 8px 20px;
+  background: linear-gradient(90deg, #0c1a19 0%, #091614 100%);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .terminal-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-muted);
 }
 
 .terminal-vault-id {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 
 .terminal-body {
   flex: 1;
   overflow: hidden;
-  padding: 8px;
 }
 
 /* xterm.js overrides */
@@ -386,18 +390,18 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   text-align: center;
 }
 
 .first-run-icon {
-  font-size: 48px;
+  font-size: 60px;
   color: var(--text-dim);
   line-height: 1;
 }
 
 .first-run-content h1 {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.02em;
@@ -405,15 +409,15 @@ button {
 
 .first-run-subtitle {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 16px;
   margin-bottom: 4px;
 }
 
 .first-run-alt {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 

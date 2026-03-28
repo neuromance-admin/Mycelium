@@ -13,13 +13,14 @@ interface Vault {
 
 interface Props {
   activeVault: Vault | null;
+  launchMode: "shell" | "connect";
 }
 
-export function Terminal({ activeVault }: Props) {
+export function Terminal({ activeVault, launchMode }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const activeVaultIdRef = useRef<string | null>(null);
+  const activeSessionRef = useRef<{ vaultId: string; mode: string } | null>(null);
 
   // Mount xterm once
   useEffect(() => {
@@ -27,22 +28,22 @@ export function Terminal({ activeVault }: Props) {
 
     const term = new XTerm({
       theme: {
-        background: "#0a0a0c",
-        foreground: "#e4e4e7",
-        cursor: "#a3e635",
-        cursorAccent: "#0a0a0c",
-        selectionBackground: "#3f3f46",
-        black: "#18181b",
+        background: "#050e0d",
+        foreground: "#dff0ee",
+        cursor: "#14b8a6",
+        cursorAccent: "#050e0d",
+        selectionBackground: "#1e3532",
+        black: "#0c1a19",
         red: "#ef4444",
         green: "#22c55e",
         yellow: "#f59e0b",
-        blue: "#6366f1",
+        blue: "#2dd4bf",
         magenta: "#a855f7",
-        cyan: "#06b6d4",
-        white: "#e4e4e7",
-        brightBlack: "#52525b",
+        cyan: "#14b8a6",
+        white: "#dff0ee",
+        brightBlack: "#355550",
         brightGreen: "#4ade80",
-        brightWhite: "#fafafa",
+        brightWhite: "#f0fafa",
       },
       fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace',
       fontSize: 13,
@@ -51,12 +52,13 @@ export function Terminal({ activeVault }: Props) {
       cursorStyle: "block",
       scrollback: 2000,
       allowTransparency: false,
+      padding: 10,
     });
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
-    fitAddon.fit();
+    requestAnimationFrame(() => fitAddon.fit());
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
@@ -84,10 +86,12 @@ export function Terminal({ activeVault }: Props) {
     };
   }, []);
 
-  // Spawn a new PTY when active vault changes
+  // Spawn a new PTY when active vault or mode changes
   useEffect(() => {
-    if (!activeVault || activeVault.id === activeVaultIdRef.current) return;
-    activeVaultIdRef.current = activeVault.id;
+    if (!activeVault) return;
+    const sessionKey = `${activeVault.id}:${launchMode}`;
+    if (sessionKey === `${activeSessionRef.current?.vaultId}:${activeSessionRef.current?.mode}`) return;
+    activeSessionRef.current = { vaultId: activeVault.id, mode: launchMode };
 
     xtermRef.current?.clear();
 
@@ -96,16 +100,21 @@ export function Terminal({ activeVault }: Props) {
       vaultPath: activeVault.path,
       cols: dims?.cols ?? 80,
       rows: dims?.rows ?? 24,
+      launchClaude: launchMode === "connect",
     }).catch((err) => {
       xtermRef.current?.writeln(`\r\nFailed to start terminal: ${err}\r\n`);
     });
-  }, [activeVault]);
+  }, [activeVault, launchMode]);
 
   return (
     <div className="terminal-panel">
       <div className="terminal-header">
         <span className="terminal-title">
-          {activeVault ? `Terminal — ${activeVault.name}` : "Terminal"}
+          {activeVault
+            ? launchMode === "connect"
+              ? `${activeVault.name} — Connected`
+              : `Terminal — ${activeVault.name}`
+            : "Terminal"}
         </span>
         {activeVault && (
           <span className="terminal-vault-id">{activeVault.id}</span>

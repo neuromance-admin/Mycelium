@@ -15,6 +15,7 @@ fn pty_create(
     vault_path: String,
     cols: u16,
     rows: u16,
+    launch_claude: bool,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let pty_system = native_pty_system();
@@ -38,6 +39,18 @@ fn pty_create(
     let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
 
     *state.writer.lock().unwrap() = Some(PtyWriter(writer));
+
+    if launch_claude {
+        let writer_state = state.writer.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            let cmd = "claude 'Read _Spore-v0.4.0.md and run it as the vault runtime. Perform the full bootstrap check, lifecycle detection, and complete read sequence. End with the handshake.'\r";
+            let mut guard = writer_state.lock().unwrap();
+            if let Some(PtyWriter(w)) = guard.as_mut() {
+                let _ = w.write_all(cmd.as_bytes());
+            }
+        });
+    }
 
     std::thread::spawn(move || {
         let _master = pair.master;

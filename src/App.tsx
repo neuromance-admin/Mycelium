@@ -77,14 +77,20 @@ function TopBar({ vaults }: { vaults: Vault[] }) {
 
 function VaultCard({
   vault,
+  onOpen,
   onLaunchTerminal,
   activeVaultId,
+  launchMode,
 }: {
   vault: Vault;
+  onOpen: (vault: Vault) => void;
   onLaunchTerminal: (vault: Vault) => void;
   activeVaultId: string | null;
+  launchMode: "shell" | "connect";
 }) {
   const isActive = activeVaultId === vault.id;
+  const isConnected = isActive && launchMode === "connect";
+  const isTerminal = isActive && launchMode === "shell";
   return (
     <div className={`vault-card ${isActive ? "vault-card--active" : ""}`}>
       <div className="vault-card-header">
@@ -105,12 +111,17 @@ function VaultCard({
         <span className="vault-path">{vault.path}</span>
       </div>
       <div className="vault-card-actions">
-        <button className="btn-action">Open</button>
         <button
-          className={`btn-action ${isActive ? "btn-action--active" : ""}`}
+          className={`btn-action ${isConnected ? "btn-action--active" : ""}`}
+          onClick={() => onOpen(vault)}
+        >
+          {isConnected ? "● Open" : "Open"}
+        </button>
+        <button
+          className={`btn-action ${isTerminal ? "btn-action--active" : ""}`}
           onClick={() => onLaunchTerminal(vault)}
         >
-          {isActive ? "● Terminal" : "Terminal"}
+          {isTerminal ? "● Terminal" : "Terminal"}
         </button>
         <button className="btn-action btn-action--ghost">Archive</button>
       </div>
@@ -120,12 +131,16 @@ function VaultCard({
 
 function VaultRegistry({
   vaults,
+  onOpen,
   onLaunchTerminal,
   activeVaultId,
+  launchMode,
 }: {
   vaults: Vault[];
+  onOpen: (vault: Vault) => void;
   onLaunchTerminal: (vault: Vault) => void;
   activeVaultId: string | null;
+  launchMode: "shell" | "connect";
 }) {
   return (
     <main className="vault-registry">
@@ -133,8 +148,10 @@ function VaultRegistry({
         <VaultCard
           key={vault.id}
           vault={vault}
+          onOpen={onOpen}
           onLaunchTerminal={onLaunchTerminal}
           activeVaultId={activeVaultId}
+          launchMode={launchMode}
         />
       ))}
     </main>
@@ -165,6 +182,7 @@ function FirstRun({ onAdd }: { onAdd: () => void }) {
 export default function App() {
   const [vaults] = useState<Vault[]>(MOCK_VAULTS);
   const [activeVaultId, setActiveVaultId] = useState<string | null>(null);
+  const [launchMode, setLaunchMode] = useState<"shell" | "connect">("shell");
 
   const activeVault = vaults.find((v) => v.id === activeVaultId) ?? null;
 
@@ -177,10 +195,15 @@ export default function App() {
       <TopBar vaults={vaults} />
       <VaultRegistry
         vaults={vaults}
-        onLaunchTerminal={(v) => setActiveVaultId(v.id)}
+        onOpen={(v) => { setLaunchMode("connect"); setActiveVaultId(v.id); }}
+        onLaunchTerminal={(v) => { setLaunchMode("shell"); setActiveVaultId(v.id); }}
         activeVaultId={activeVaultId}
+        launchMode={launchMode}
       />
-      <Terminal activeVault={activeVault ? { id: activeVault.id, name: activeVault.name, path: activeVault.path } : null} />
+      <Terminal
+        activeVault={activeVault ? { id: activeVault.id, name: activeVault.name, path: activeVault.path } : null}
+        launchMode={launchMode}
+      />
     </div>
   );
 }
