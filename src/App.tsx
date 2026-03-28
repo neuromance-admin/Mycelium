@@ -3,6 +3,11 @@ import "./App.css";
 import { Terminal } from "./Terminal";
 import type { Session } from "./Terminal";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+
+// ─── Version ───────────────────────────────────────────────────────────────
+
+const APP_VERSION = "0.1.0";
 
 // ─── Vault colour palette ──────────────────────────────────────────────────
 
@@ -35,30 +40,28 @@ interface Vault {
   colour: string;
 }
 
-const MOCK_VAULTS: Vault[] = [
-  {
-    id: "MYC-74832",
-    name: "VMD-Orchestrator",
-    path: "/Users/douglassimoes/Documents/NeuromanceCo/Obsidian Vaults/VMD-Orchestrator",
-    health: "healthy",
-    nodeCount: 39,
-    lastSession: "2026-03-28",
-    aiName: "Eve",
-    sporeVersion: "0.4.0",
-    colour: VAULT_COLOURS[0].hex,
-  },
-  {
-    id: "MYC-74831",
-    name: "Mycelium-Vault",
-    path: "/Users/douglassimoes/Documents/NeuromanceCo/Obsidian Vaults/Mycelium-Vault",
-    health: "healthy",
-    nodeCount: 52,
-    lastSession: "2026-03-24",
-    aiName: "Eve",
-    sporeVersion: "0.4.0",
-    colour: VAULT_COLOURS[1].hex,
-  },
-];
+interface RustVaultIdentity {
+  vmd_id: string;
+  vault_name: string;
+  ai_name: string;
+  spore_version: string;
+}
+
+// ─── Vault persistence ─────────────────────────────────────────────────────
+
+function loadVaults(): Vault[] {
+  try {
+    const stored = localStorage.getItem("vmd-vaults");
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return [];
+}
+
+function saveVaults(vaults: Vault[]) {
+  localStorage.setItem("vmd-vaults", JSON.stringify(vaults));
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
 
 const HEALTH_LABELS = {
   healthy: "All healthy",
@@ -66,12 +69,18 @@ const HEALTH_LABELS = {
   error: "Errors detected",
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
 function getAggregateHealth(vaults: Vault[]): "healthy" | "warning" | "error" {
   if (vaults.some((v) => v.health === "error")) return "error";
   if (vaults.some((v) => v.health === "warning")) return "warning";
   return "healthy";
+}
+
+function pickColour(vaults: Vault[]): string {
+  const used = new Set(vaults.map((v) => v.colour));
+  return (
+    VAULT_COLOURS.find((c) => !used.has(c.hex))?.hex ??
+    VAULT_COLOURS[vaults.length % VAULT_COLOURS.length].hex
+  );
 }
 
 // ─── HealthDot ─────────────────────────────────────────────────────────────
@@ -82,13 +91,20 @@ function HealthDot({ status }: { status: "healthy" | "warning" | "error" }) {
 
 // ─── TopBar ────────────────────────────────────────────────────────────────
 
-function TopBar({ vaults }: { vaults: Vault[] }) {
+function TopBar({
+  vaults,
+  onAddVault,
+}: {
+  vaults: Vault[];
+  onAddVault: () => void;
+}) {
   const health = getAggregateHealth(vaults);
   return (
     <header className="top-bar">
       <div className="top-bar-left">
         <span className="app-name">VMD Desktop</span>
-        <button className="btn-primary">+ Add VMD</button>
+        <span className="app-version">v{APP_VERSION}</span>
+        <button className="btn-primary" onClick={onAddVault}>+ Add VMD</button>
         <input className="search-input" type="text" placeholder="Search vaults..." />
       </div>
       <div className="top-bar-right">
@@ -352,7 +368,7 @@ function FirstRun({ onAdd }: { onAdd: () => void }) {
 // ─── App ───────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [vaults] = useState<Vault[]>(MOCK_VAULTS);
+  const [vaults, setVaults] = useState<Vault[]>(loadVaults);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [busySessions, setBusySessions] = useState<Set<string>>(new Set());
@@ -369,6 +385,40 @@ export default function App() {
       });
     }, 1500);
   }, []);
+
+  const handleAddVault = useCallback(async () => {
+    const selected = await openDialog({
+      directory: true,
+      multiple: false,
+      title: "Select VMD Vault Folder",
+    });
+    if (!selected || typeof selected !== "string") return;
+
+    try {
+      const identity = await invoke<RustVaultIdentity>("read_vault_identity", { path: selected });
+
+      // Skip duplicates
+      if (vaults.some((v) => v.id === identity.vmd_id || v.path === selected)) return;
+
+      const newVault: Vault = {
+        id: identity.vmd_id || `MYC-${Date.now()}`,
+        name: identity.vault_name || selected.split("/").pop() || "Unknown Vault",
+        path: selected,
+        health: "healthy",
+        nodeCount: 0,
+        lastSession: "New",
+        aiName: identity.ai_name || "Unknown",
+        sporeVersion: identity.spore_version || "?",
+        colour: pickColour(vaults),
+      };
+
+      const updated = [...vaults, newVault];
+      setVaults(updated);
+      saveVaults(updated);
+    } catch (err) {
+      console.error("Failed to add vault:", err);
+    }
+  }, [vaults]);
 
   const openSession = useCallback((vault: Vault, mode: "shell" | "connect") => {
     const id = makeSessionId();
@@ -398,12 +448,12 @@ export default function App() {
   }, [activeSessionId]);
 
   if (vaults.length === 0) {
-    return <FirstRun onAdd={() => {}} />;
+    return <FirstRun onAdd={handleAddVault} />;
   }
 
   return (
     <div className="app-shell">
-      <TopBar vaults={vaults} />
+      <TopBar vaults={vaults} onAddVault={handleAddVault} />
       <VaultRegistry
         vaults={vaults}
         onOpen={(v) => openSession(v, "connect")}

@@ -34,7 +34,7 @@ export function Terminal({ session, isActive, onActivity }: Props) {
       theme: {
         background: "#111f1e",
         foreground: "#e8f5f3",
-        cursor: "#14b8a6",
+        cursor: session.colour,           // matches vault colour
         cursorAccent: "#111f1e",
         selectionBackground: "#2a4f4a",
         black: "#172b28",
@@ -62,12 +62,16 @@ export function Terminal({ session, isActive, onActivity }: Props) {
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
 
+    // Double-rAF ensures the container has been painted before fitting
     requestAnimationFrame(() => {
-      fitAddon.fit();
-      const d = fitAddon.proposeDimensions();
-      if (d) {
-        invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
-      }
+      requestAnimationFrame(() => {
+        fitAddon.fit();
+        const d = fitAddon.proposeDimensions();
+        if (d) {
+          invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
+        }
+        term.refresh(0, term.rows - 1);
+      });
     });
 
     xtermRef.current = term;
@@ -79,19 +83,22 @@ export function Terminal({ session, isActive, onActivity }: Props) {
       onActivity(session.id);
     });
 
-    // Keyboard input
+    // Keyboard input — normalise bare CR → CR+LF so shells execute on first Enter
     const onDataDisposable = term.onData((data) => {
-      invoke("pty_write", { sessionId: session.id, data }).catch(console.error);
+      const toWrite = data === "\r" ? "\r\n" : data;
+      invoke("pty_write", { sessionId: session.id, data: toWrite }).catch(console.error);
     });
 
     // Resize observer
     const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
-        fitAddon.fit();
-        const d = fitAddon.proposeDimensions();
-        if (d) {
-          invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
-        }
+        requestAnimationFrame(() => {
+          fitAddon.fit();
+          const d = fitAddon.proposeDimensions();
+          if (d) {
+            invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
+          }
+        });
       });
     });
     observer.observe(containerRef.current);
@@ -118,16 +125,20 @@ export function Terminal({ session, isActive, onActivity }: Props) {
     };
   }, []);
 
-  // Refit when tab becomes visible
+  // Refit when tab becomes active — double-rAF to let display:flex paint first
   useEffect(() => {
     if (!isActive) return;
     requestAnimationFrame(() => {
-      fitAddonRef.current?.fit();
-      const d = fitAddonRef.current?.proposeDimensions();
-      if (d) {
-        invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
-      }
-      xtermRef.current?.refresh(0, xtermRef.current.rows - 1);
+      requestAnimationFrame(() => {
+        fitAddonRef.current?.fit();
+        const d = fitAddonRef.current?.proposeDimensions();
+        if (d) {
+          invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
+        }
+        if (xtermRef.current) {
+          xtermRef.current.refresh(0, xtermRef.current.rows - 1);
+        }
+      });
     });
   }, [isActive]);
 
