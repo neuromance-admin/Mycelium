@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import "./App.css";
 import { Terminal } from "./Terminal";
 import type { Session } from "./Terminal";
@@ -41,11 +41,11 @@ const MOCK_VAULTS: Vault[] = [
     name: "VMD-Orchestrator",
     path: "/Users/douglassimoes/Documents/NeuromanceCo/Obsidian Vaults/VMD-Orchestrator",
     health: "healthy",
-    nodeCount: 38,
-    lastSession: "2026-03-27",
+    nodeCount: 39,
+    lastSession: "2026-03-28",
     aiName: "Eve",
     sporeVersion: "0.4.0",
-    colour: VAULT_COLOURS[0].hex, // teal
+    colour: VAULT_COLOURS[0].hex,
   },
   {
     id: "MYC-74831",
@@ -56,7 +56,7 @@ const MOCK_VAULTS: Vault[] = [
     lastSession: "2026-03-24",
     aiName: "Eve",
     sporeVersion: "0.4.0",
-    colour: VAULT_COLOURS[1].hex, // indigo
+    colour: VAULT_COLOURS[1].hex,
   },
 ];
 
@@ -125,24 +125,24 @@ function VaultCard({
     (s) => s.vaultId === vault.id && s.mode === "shell"
   );
   const isActive = hasConnect || hasShell;
+  const c = vault.colour;
 
   const cardStyle = {
-    borderLeft: `3px solid ${vault.colour}`,
-    ...(isActive
-      ? {
-          boxShadow: `0 0 0 1px ${vault.colour}33, 0 0 12px ${vault.colour}18`,
-          background: `color-mix(in srgb, ${vault.colour} 6%, var(--bg-surface))`,
-        }
-      : {}),
+    background: `linear-gradient(135deg,
+      color-mix(in srgb, ${c} 38%, #1e3733) 0%,
+      color-mix(in srgb, ${c} 18%, #172b28) 45%,
+      #172b28 100%)`,
+    border: `1px solid color-mix(in srgb, ${c} ${isActive ? "55%" : "30%"}, transparent)`,
+    boxShadow: isActive
+      ? `0 0 0 1px color-mix(in srgb, ${c} 20%, transparent), 0 4px 24px color-mix(in srgb, ${c} 18%, transparent)`
+      : `0 2px 12px color-mix(in srgb, ${c} 10%, transparent)`,
   };
 
   return (
-    <div
-      className={`vault-card ${isActive ? "vault-card--active" : ""}`}
-      style={cardStyle}
-    >
+    <div className="vault-card" style={cardStyle}>
       <div className="vault-card-header">
         <div className="vault-card-identity">
+          <span className="vault-colour-dot" style={{ background: c }} />
           <HealthDot status={vault.health} />
           <span className="vault-id">{vault.id}</span>
           <span className="vault-name">{vault.name}</span>
@@ -161,12 +161,14 @@ function VaultCard({
       <div className="vault-card-actions">
         <button
           className={`btn-action ${hasConnect ? "btn-action--active" : ""}`}
+          style={hasConnect ? { borderColor: c, color: c } : {}}
           onClick={() => onOpen(vault)}
         >
           {hasConnect ? "● Open" : "Open"}
         </button>
         <button
           className={`btn-action ${hasShell ? "btn-action--active" : ""}`}
+          style={hasShell ? { borderColor: c, color: c } : {}}
           onClick={() => onLaunchTerminal(vault)}
         >
           {hasShell ? "● Terminal" : "Terminal"}
@@ -210,11 +212,13 @@ function VaultRegistry({
 function TabBar({
   sessions,
   activeSessionId,
+  busySessions,
   onActivate,
   onClose,
 }: {
   sessions: Session[];
   activeSessionId: string | null;
+  busySessions: Set<string>;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
 }) {
@@ -224,9 +228,11 @@ function TabBar({
     <div className="tab-bar">
       {sessions.map((s) => {
         const isActive = s.id === activeSessionId;
+        const isBusy = busySessions.has(s.id);
+
         const tabStyle = isActive
           ? {
-              background: `color-mix(in srgb, ${s.colour} 12%, transparent)`,
+              background: `color-mix(in srgb, ${s.colour} 14%, #0e1a19)`,
               borderBottom: `2px solid ${s.colour}`,
               color: "var(--text)",
             }
@@ -235,16 +241,22 @@ function TabBar({
         return (
           <button
             key={s.id}
-            className={`tab ${isActive ? "tab--active" : ""}`}
+            className={`tab ${isActive ? "tab--active" : ""} ${isBusy ? "tab--busy" : ""}`}
             style={tabStyle}
             onClick={() => onActivate(s.id)}
           >
             <span
-              className="tab-dot"
-              style={{ background: s.colour }}
+              className={`tab-dot ${isBusy ? "tab-dot--busy" : ""}`}
+              style={{
+                background: s.colour,
+                boxShadow: isActive ? `0 0 6px ${s.colour}` : undefined,
+              }}
             />
             <span className="tab-vault-name">{s.vaultName}</span>
-            <span className="tab-mode-badge">
+            <span
+              className="tab-mode-badge"
+              style={isActive ? { color: s.colour, background: `color-mix(in srgb, ${s.colour} 15%, transparent)` } : {}}
+            >
               {s.mode === "connect" ? "EVE" : "SH"}
             </span>
             <button
@@ -253,7 +265,7 @@ function TabBar({
                 e.stopPropagation();
                 onClose(s.id);
               }}
-              title="Close tab"
+              title="Close"
             >
               ×
             </button>
@@ -269,36 +281,48 @@ function TabBar({
 function TerminalPanel({
   sessions,
   activeSessionId,
+  busySessions,
   onActivate,
   onClose,
+  onActivity,
 }: {
   sessions: Session[];
   activeSessionId: string | null;
+  busySessions: Set<string>;
   onActivate: (id: string) => void;
   onClose: (id: string) => void;
+  onActivity: (sessionId: string) => void;
 }) {
-  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
-  const isEmpty = sessions.length === 0;
-
   return (
     <div className="terminal-panel-outer">
       <TabBar
         sessions={sessions}
         activeSessionId={activeSessionId}
+        busySessions={busySessions}
         onActivate={onActivate}
         onClose={onClose}
       />
-      {isEmpty ? (
-        <div className="terminal-empty-state">
-          <div className="terminal-empty-icon">⬡</div>
-          <p className="terminal-empty-title">No active sessions</p>
-          <p className="terminal-empty-hint">
-            Click <strong>Open</strong> or <strong>Terminal</strong> on a vault to begin
-          </p>
-        </div>
-      ) : (
-        <Terminal session={activeSession} />
-      )}
+      <div className="terminal-stack">
+        {sessions.length === 0 ? (
+          <div className="terminal-empty-state">
+            <div className="terminal-empty-icon">⬡</div>
+            <div className="terminal-empty-title">No active sessions</div>
+            <div className="terminal-empty-hint">
+              Click <strong>Open</strong> to connect to a vault's AI,
+              or <strong>Terminal</strong> for a plain shell.
+            </div>
+          </div>
+        ) : (
+          sessions.map((s) => (
+            <Terminal
+              key={s.id}
+              session={s}
+              isActive={s.id === activeSessionId}
+              onActivity={onActivity}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -331,14 +355,24 @@ export default function App() {
   const [vaults] = useState<Vault[]>(MOCK_VAULTS);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [busySessions, setBusySessions] = useState<Set<string>>(new Set());
+  const busyTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  if (vaults.length === 0) {
-    return <FirstRun onAdd={() => {}} />;
-  }
+  const handleActivity = useCallback((sessionId: string) => {
+    setBusySessions((prev) => new Set(prev).add(sessionId));
+    if (busyTimers.current[sessionId]) clearTimeout(busyTimers.current[sessionId]);
+    busyTimers.current[sessionId] = setTimeout(() => {
+      setBusySessions((prev) => {
+        const next = new Set(prev);
+        next.delete(sessionId);
+        return next;
+      });
+    }, 1500);
+  }, []);
 
-  function openSession(vault: Vault, mode: "shell" | "connect") {
+  const openSession = useCallback((vault: Vault, mode: "shell" | "connect") => {
     const id = makeSessionId();
-    const newSession: Session = {
+    const session: Session = {
       id,
       vaultId: vault.id,
       vaultName: vault.name,
@@ -346,26 +380,25 @@ export default function App() {
       colour: vault.colour,
       vaultPath: vault.path,
     };
-    setSessions((prev) => [...prev, newSession]);
+    setSessions((prev) => [...prev, session]);
     setActiveSessionId(id);
-  }
+  }, []);
 
-  function closeSession(id: string) {
+  const closeSession = useCallback((id: string) => {
     invoke("pty_close", { sessionId: id }).catch(() => {});
     setSessions((prev) => {
       const idx = prev.findIndex((s) => s.id === id);
       const next = prev.filter((s) => s.id !== id);
       if (id === activeSessionId) {
-        if (next.length === 0) {
-          setActiveSessionId(null);
-        } else {
-          // prefer left neighbour, otherwise right
-          const newIdx = Math.max(0, idx - 1);
-          setActiveSessionId(next[newIdx]?.id ?? null);
-        }
+        const neighbour = next[idx - 1] ?? next[idx] ?? null;
+        setActiveSessionId(neighbour?.id ?? null);
       }
       return next;
     });
+  }, [activeSessionId]);
+
+  if (vaults.length === 0) {
+    return <FirstRun onAdd={() => {}} />;
   }
 
   return (
@@ -380,8 +413,10 @@ export default function App() {
       <TerminalPanel
         sessions={sessions}
         activeSessionId={activeSessionId}
+        busySessions={busySessions}
         onActivate={setActiveSessionId}
         onClose={closeSession}
+        onActivity={handleActivity}
       />
     </div>
   );

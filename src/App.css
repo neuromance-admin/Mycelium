@@ -26,13 +26,11 @@
   --red: #ef4444;
 
   --terminal-bg: #111f1e;
-  --terminal-text: #a3e635;
-  --terminal-muted: #5f9490;
   --terminal-cursor: #14b8a6;
 
   --top-bar-height: 60px;
   --tab-bar-height: 36px;
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
   --radius: 14px;
   --radius-sm: 8px;
@@ -89,15 +87,15 @@ html, body, #root {
 }
 
 .app-name {
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 15px;
   color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin-right: 4px;
 }
 
 .search-input {
-  background: var(--bg);
+  background: rgba(0,0,0,0.2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text);
@@ -109,16 +107,11 @@ html, body, #root {
   transition: border-color 0.15s;
 }
 
-.search-input::placeholder {
-  color: var(--text-dim);
-}
-
-.search-input:focus {
-  border-color: var(--accent);
-}
+.search-input::placeholder { color: var(--text-dim); }
+.search-input:focus { border-color: var(--accent); }
 
 .vault-count {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -130,7 +123,7 @@ button {
   cursor: pointer;
   border: none;
   outline: none;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
 }
 
 .btn-primary {
@@ -138,13 +131,10 @@ button {
   color: #fff;
   border-radius: var(--radius-sm);
   padding: 6px 16px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
-
-.btn-primary:hover {
-  background: var(--accent-hover);
-}
-
+.btn-primary:hover { background: var(--accent-hover); }
 .btn-primary--large {
   padding: 12px 32px;
   font-size: 16px;
@@ -158,53 +148,38 @@ button {
   border-radius: var(--radius-sm);
   font-size: 16px;
 }
-
-.btn-icon:hover {
-  background: var(--bg-hover);
-  color: var(--text);
-}
+.btn-icon:hover { background: var(--bg-hover); color: var(--text); }
 
 .btn-action {
-  background: var(--bg-raised);
+  background: rgba(0,0,0,0.2);
   color: var(--text-muted);
   border-radius: var(--radius-sm);
   padding: 5px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   font-size: 13px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-
 .btn-action:hover {
   background: var(--bg-hover);
   color: var(--text);
   border-color: var(--accent);
 }
-
 .btn-action--active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent-hover);
-  border-color: var(--accent);
+  background: rgba(0,0,0,0.25);
+  font-weight: 500;
 }
-
-.btn-action--ghost {
-  background: transparent;
-  border-color: transparent;
-}
-
-.btn-action--ghost:hover {
-  border-color: var(--border);
-  color: var(--text-muted);
-}
+.btn-action--ghost { background: transparent; border-color: transparent; }
+.btn-action--ghost:hover { border-color: var(--border); color: var(--text-muted); }
 
 /* ─── Health ─────────────────────────────────────────────────────── */
 
 .health-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-
 .health-dot.health-healthy { background: var(--green); }
 .health-dot.health-warning { background: var(--amber); }
 .health-dot.health-error   { background: var(--red); }
@@ -217,9 +192,8 @@ button {
   padding: 4px 12px;
   border-radius: 99px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: rgba(0,0,0,0.15);
 }
-
 .health-badge.health-healthy { color: var(--green); }
 .health-badge.health-warning { color: var(--amber); }
 .health-badge.health-error   { color: var(--red); }
@@ -228,49 +202,32 @@ button {
 
 .vault-registry {
   overflow-y: auto;
-  padding: 16px 12px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   background: transparent;
   border-right: 1px solid var(--border);
 }
-
-.vault-registry::-webkit-scrollbar {
-  width: 5px;
-}
-
-.vault-registry::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.vault-registry::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
+.vault-registry::-webkit-scrollbar { width: 4px; }
+.vault-registry::-webkit-scrollbar-track { background: transparent; }
+.vault-registry::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 /* ─── Vault Card ─────────────────────────────────────────────────── */
 
 .vault-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
-  /* left border stripe comes from inline style */
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.2s;
+  gap: 9px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   overflow: hidden;
+  cursor: default;
 }
 
 .vault-card:hover {
-  border-color: var(--border);
-  background: var(--bg-raised);
-}
-
-.vault-card--active {
-  border-color: var(--border);
+  transform: translateY(-2px);
 }
 
 .vault-card-header {
@@ -284,43 +241,51 @@ button {
 .vault-card-identity {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+}
+
+.vault-colour-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px currentColor;
 }
 
 .vault-id {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.45);
 }
 
 .vault-name {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .vault-ai-badge {
   font-size: 11px;
-  color: var(--text-dim);
+  color: rgba(255,255,255,0.4);
   font-family: var(--font-mono);
+  letter-spacing: 0.02em;
 }
 
 .vault-card-meta {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.5);
 }
 
-.meta-sep {
-  display: none;
-}
+.meta-sep { display: none; }
 
 .vault-path {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-dim);
+  color: rgba(255,255,255,0.3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -350,25 +315,22 @@ button {
   align-items: stretch;
   height: var(--tab-bar-height);
   min-height: var(--tab-bar-height);
-  background: #0e1a19;
-  border-bottom: 1px solid var(--border-subtle);
+  background: #0c1817;
+  border-bottom: 1px solid #1c2e2c;
   overflow-x: auto;
   overflow-y: hidden;
   flex-shrink: 0;
   scrollbar-width: none;
 }
-
-.tab-bar::-webkit-scrollbar {
-  display: none;
-}
+.tab-bar::-webkit-scrollbar { display: none; }
 
 .tab {
   display: flex;
   align-items: center;
   gap: 7px;
   padding: 0 12px 0 10px;
-  min-width: 130px;
-  max-width: 200px;
+  min-width: 140px;
+  max-width: 210px;
   height: 100%;
   background: transparent;
   border: none;
@@ -381,20 +343,16 @@ button {
   cursor: pointer;
   flex-shrink: 0;
   transition: background 0.12s, color 0.12s;
-  position: relative;
   white-space: nowrap;
   overflow: hidden;
 }
-
 .tab:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255,255,255,0.03);
   color: var(--text-muted);
 }
+.tab--active { font-weight: 550; }
 
-.tab--active {
-  font-weight: 520;
-  /* background and border-bottom set via inline style */
-}
+/* ─── Tab dot + busy animation ───────────────────────────────────── */
 
 .tab-dot {
   display: inline-block;
@@ -402,12 +360,29 @@ button {
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: 0.8;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+.tab--active .tab-dot { opacity: 1; }
+
+@keyframes dot-ping {
+  0%   { transform: scale(1);   opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  60%  { transform: scale(1.1); opacity: 0.9; box-shadow: 0 0 0 4px transparent; }
+  100% { transform: scale(1);   opacity: 1; }
 }
 
-.tab--active .tab-dot {
-  opacity: 1;
-  box-shadow: 0 0 5px currentColor;
+.tab-dot--busy {
+  animation: dot-ping 0.9s ease-in-out infinite;
+}
+
+@keyframes tab-shimmer {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.tab--busy:not(.tab--active) {
+  animation: tab-shimmer 1.4s ease-in-out infinite;
 }
 
 .tab-vault-name {
@@ -420,20 +395,16 @@ button {
 
 .tab-mode-badge {
   font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
-  padding: 1px 5px;
+  padding: 2px 5px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255,255,255,0.05);
   flex-shrink: 0;
   text-transform: uppercase;
-}
-
-.tab--active .tab-mode-badge {
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.08);
+  transition: color 0.15s, background 0.15s;
 }
 
 .tab-close {
@@ -451,20 +422,34 @@ button {
   flex-shrink: 0;
   cursor: pointer;
   border: none;
-  font-family: var(--font-sans);
   transition: background 0.1s, color 0.1s;
 }
+.tab:hover .tab-close { display: flex; }
+.tab-close:hover { background: rgba(239,68,68,0.2); color: #ef4444; }
 
-.tab:hover .tab-close {
+/* ─── Terminal Stack ─────────────────────────────────────────────── */
+
+.terminal-stack {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Terminal Wrapper (show/hide per session) ───────────────────── */
+
+.terminal-wrapper {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+.terminal-wrapper--active {
   display: flex;
 }
 
-.tab-close:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-}
-
-/* ─── Terminal Panel (inner — from Terminal.tsx) ──────────────────── */
+/* ─── Terminal Panel (inner) ─────────────────────────────────────── */
 
 .terminal-panel {
   display: flex;
@@ -477,23 +462,31 @@ button {
 .terminal-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 20px;
-  background: linear-gradient(90deg, #1e3733 0%, #1a3330 100%);
+  gap: 10px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  transition: background 0.2s, border-left-color 0.2s;
+  transition: background 0.25s, border-left-color 0.25s;
+}
+
+.terminal-header-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px currentColor;
 }
 
 .terminal-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
+  flex: 1;
 }
 
 .terminal-vault-id {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
 }
 
@@ -502,14 +495,8 @@ button {
   overflow: hidden;
 }
 
-/* xterm.js overrides */
-.terminal-body .xterm {
-  height: 100%;
-}
-
-.terminal-body .xterm-viewport {
-  background: transparent !important;
-}
+.terminal-body .xterm { height: 100%; }
+.terminal-body .xterm-viewport { background: transparent !important; }
 
 /* ─── Terminal Empty State ───────────────────────────────────────── */
 
@@ -520,18 +507,17 @@ button {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  color: var(--text-dim);
   background: var(--terminal-bg);
   padding: 40px 20px;
   user-select: none;
 }
 
 .terminal-empty-icon {
-  font-size: 36px;
+  font-size: 40px;
   color: var(--text-dim);
-  opacity: 0.35;
+  opacity: 0.3;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .terminal-empty-title {
@@ -545,7 +531,8 @@ button {
   font-size: 13px;
   color: #3a6a65;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.6;
+  max-width: 260px;
 }
 
 .terminal-empty-hint strong {
@@ -579,15 +566,14 @@ button {
 
 .first-run-content h1 {
   font-size: 28px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .first-run-subtitle {
   color: var(--text-muted);
   font-size: 16px;
-  margin-bottom: 4px;
 }
 
 .first-run-alt {
@@ -598,12 +584,5 @@ button {
   color: var(--text-muted);
 }
 
-.first-run-alt a {
-  color: var(--text-muted);
-  text-decoration: none;
-}
-
-.first-run-alt a:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
+.first-run-alt a { color: var(--text-muted); text-decoration: none; }
+.first-run-alt a:hover { color: var(--accent-hover); text-decoration: underline; }

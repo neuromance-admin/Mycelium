@@ -15,17 +15,18 @@ export interface Session {
 }
 
 interface Props {
-  session: Session | null;
+  session: Session;
+  isActive: boolean;
+  onActivity: (sessionId: string) => void;
 }
 
-export function Terminal({ session }: Props) {
+export function Terminal({ session, isActive, onActivity }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  // Track which session IDs have already been spawned
-  const spawnedRef = useRef<Set<string>>(new Set());
+  const spawnedRef = useRef(false);
 
-  // Mount xterm once
+  // Mount xterm once per session instance
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -34,7 +35,7 @@ export function Terminal({ session }: Props) {
         background: "#111f1e",
         foreground: "#e8f5f3",
         cursor: "#14b8a6",
-        cursorAccent: "#0c1917",
+        cursorAccent: "#111f1e",
         selectionBackground: "#2a4f4a",
         black: "#172b28",
         red: "#ef4444",
@@ -60,124 +61,98 @@ export function Terminal({ session }: Props) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
+
     requestAnimationFrame(() => {
       fitAddon.fit();
+      const d = fitAddon.proposeDimensions();
+      if (d) {
+        invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
+      }
     });
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    const observer = new ResizeObserver(() => {
-      requestAnimationFrame(() => {
-        fitAddon.fit();
-      });
-    });
-    observer.observe(containerRef.current);
-
-    return () => {
-      observer.disconnect();
-      term.dispose();
-    };
-  }, []);
-
-  // When session changes, attach listener and spawn PTY if new
-  useEffect(() => {
-    if (!session) return;
-
-    const term = xtermRef.current;
-    if (!term) return;
-
-    term.clear();
-
-    // Attach listener for this session's PTY data
-    const eventName = `pty-data-${session.id}`;
-    const unlistenPromise = listen<string>(eventName, (event) => {
+    // PTY data listener
+    const unlistenPromise = listen<string>(`pty-data-${session.id}`, (event) => {
       term.write(event.payload);
+      onActivity(session.id);
     });
 
-    // Wire up keyboard input to this session
+    // Keyboard input
     const onDataDisposable = term.onData((data) => {
       invoke("pty_write", { sessionId: session.id, data }).catch(console.error);
     });
 
-    // Spawn PTY only once per session ID
-    if (!spawnedRef.current.has(session.id)) {
-      spawnedRef.current.add(session.id);
+    // Resize observer
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(() => {
+        fitAddon.fit();
+        const d = fitAddon.proposeDimensions();
+        if (d) {
+          invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
+        }
+      });
+    });
+    observer.observe(containerRef.current);
 
-      const dims = fitAddonRef.current?.proposeDimensions();
+    // Spawn PTY once
+    if (!spawnedRef.current) {
+      spawnedRef.current = true;
       invoke("pty_create", {
         sessionId: session.id,
         vaultPath: session.vaultPath,
-        cols: dims?.cols ?? 80,
-        rows: dims?.rows ?? 24,
+        cols: 80,
+        rows: 24,
         launchClaude: session.mode === "connect",
       }).catch((err) => {
         term.writeln(`\r\nFailed to start terminal: ${err}\r\n`);
       });
-
-      // Initial resize after spawn
-      requestAnimationFrame(() => {
-        fitAddonRef.current?.fit();
-        const d = fitAddonRef.current?.proposeDimensions();
-        if (d) {
-          invoke("pty_resize", {
-            sessionId: session.id,
-            cols: d.cols,
-            rows: d.rows,
-          }).catch(() => {});
-        }
-      });
-    }
-
-    // Resize observer scoped to this session
-    const container = containerRef.current;
-    let resizeObserver: ResizeObserver | null = null;
-    if (container) {
-      resizeObserver = new ResizeObserver(() => {
-        requestAnimationFrame(() => {
-          fitAddonRef.current?.fit();
-          const d = fitAddonRef.current?.proposeDimensions();
-          if (d) {
-            invoke("pty_resize", {
-              sessionId: session.id,
-              cols: d.cols,
-              rows: d.rows,
-            }).catch(() => {});
-          }
-        });
-      });
-      resizeObserver.observe(container);
     }
 
     return () => {
       unlistenPromise.then((fn) => fn());
       onDataDisposable.dispose();
-      resizeObserver?.disconnect();
+      observer.disconnect();
+      term.dispose();
     };
-  }, [session?.id]);
+  }, []);
 
-  const headerStyle = session
-    ? {
-        background: `linear-gradient(90deg, color-mix(in srgb, ${session.colour} 8%, #1e3733) 0%, #1a3330 100%)`,
-        borderLeft: `3px solid ${session.colour}`,
+  // Refit when tab becomes visible
+  useEffect(() => {
+    if (!isActive) return;
+    requestAnimationFrame(() => {
+      fitAddonRef.current?.fit();
+      const d = fitAddonRef.current?.proposeDimensions();
+      if (d) {
+        invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
       }
-    : {};
+      xtermRef.current?.refresh(0, xtermRef.current.rows - 1);
+    });
+  }, [isActive]);
+
+  const headerStyle = {
+    background: `linear-gradient(90deg, color-mix(in srgb, ${session.colour} 12%, #1e3733) 0%, #1a3330 100%)`,
+    borderLeft: `3px solid ${session.colour}`,
+  };
 
   return (
-    <div className="terminal-panel">
-      <div className="terminal-header" style={headerStyle}>
-        <span className="terminal-title">
-          {session
-            ? session.mode === "connect"
+    <div className={`terminal-wrapper ${isActive ? "terminal-wrapper--active" : ""}`}>
+      <div className="terminal-panel">
+        <div className="terminal-header" style={headerStyle}>
+          <span
+            className="terminal-header-dot"
+            style={{ background: session.colour }}
+          />
+          <span className="terminal-title">
+            {session.mode === "connect"
               ? `${session.vaultName} — Connected`
-              : `Terminal — ${session.vaultName}`
-            : "Terminal"}
-        </span>
-        {session && (
+              : `Terminal — ${session.vaultName}`}
+          </span>
           <span className="terminal-vault-id">{session.vaultId}</span>
-        )}
+        </div>
+        <div ref={containerRef} className="terminal-body" />
       </div>
-      <div ref={containerRef} className="terminal-body" />
     </div>
   );
 }
