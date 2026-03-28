@@ -127,11 +127,13 @@ function VaultCard({
   vault,
   onOpen,
   onLaunchTerminal,
+  onRemove,
   activeSessions,
 }: {
   vault: Vault;
   onOpen: (vault: Vault) => void;
   onLaunchTerminal: (vault: Vault) => void;
+  onRemove: (vault: Vault) => void;
   activeSessions: Session[];
 }) {
   const hasConnect = activeSessions.some(
@@ -189,7 +191,12 @@ function VaultCard({
         >
           {hasShell ? "● Terminal" : "Terminal"}
         </button>
-        <button className="btn-action btn-action--ghost">Archive</button>
+        <button
+          className="btn-action btn-action--ghost btn-action--danger"
+          onClick={() => onRemove(vault)}
+        >
+          Remove
+        </button>
       </div>
     </div>
   );
@@ -201,11 +208,13 @@ function VaultRegistry({
   vaults,
   onOpen,
   onLaunchTerminal,
+  onRemove,
   activeSessions,
 }: {
   vaults: Vault[];
   onOpen: (vault: Vault) => void;
   onLaunchTerminal: (vault: Vault) => void;
+  onRemove: (vault: Vault) => void;
   activeSessions: Session[];
 }) {
   return (
@@ -216,6 +225,7 @@ function VaultRegistry({
           vault={vault}
           onOpen={onOpen}
           onLaunchTerminal={onLaunchTerminal}
+          onRemove={onRemove}
           activeSessions={activeSessions}
         />
       ))}
@@ -420,6 +430,26 @@ export default function App() {
     }
   }, [vaults]);
 
+  const handleRemoveVault = useCallback((vault: Vault) => {
+    // Close any open sessions for this vault
+    setSessions((prev) => {
+      const toClose = prev.filter((s) => s.vaultId === vault.id);
+      toClose.forEach((s) => invoke("pty_close", { sessionId: s.id }).catch(() => {}));
+      const next = prev.filter((s) => s.vaultId !== vault.id);
+      setActiveSessionId((cur) => {
+        if (toClose.some((s) => s.id === cur)) return next[0]?.id ?? null;
+        return cur;
+      });
+      return next;
+    });
+
+    setVaults((prev) => {
+      const updated = prev.filter((v) => v.id !== vault.id);
+      saveVaults(updated);
+      return updated;
+    });
+  }, []);
+
   const openSession = useCallback((vault: Vault, mode: "shell" | "connect") => {
     const id = makeSessionId();
     const session: Session = {
@@ -458,6 +488,7 @@ export default function App() {
         vaults={vaults}
         onOpen={(v) => openSession(v, "connect")}
         onLaunchTerminal={(v) => openSession(v, "shell")}
+        onRemove={handleRemoveVault}
         activeSessions={sessions}
       />
       <TerminalPanel

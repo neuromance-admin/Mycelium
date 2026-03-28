@@ -35,7 +35,11 @@ fn pty_create(
         .map_err(|e| e.to_string())?;
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    // Spawn as a login shell so zsh sources /etc/zprofile and ~/.zprofile,
+    // which populates PATH with Homebrew, nvm, cargo, etc.
+    // Without this, GUI apps launched from Finder get launchd's minimal PATH.
     let mut cmd = CommandBuilder::new(&shell);
+    cmd.args(&["-l"]);
     cmd.cwd(&vault_path);
     cmd.env("TERM", "xterm-256color");
     cmd.env("LANG", "en_US.UTF-8");

@@ -178,6 +178,8 @@ button {
 }
 .btn-action--ghost { background: transparent; border-color: transparent; }
 .btn-action--ghost:hover { border-color: var(--border); color: var(--text-muted); }
+.btn-action--danger { color: #f87171; }
+.btn-action--danger:hover { border-color: #f87171; background: rgba(248,113,113,0.08); color: #f87171; }
 
 /* ─── Health ─────────────────────────────────────────────────────── */
 
