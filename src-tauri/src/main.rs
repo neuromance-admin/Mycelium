@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    vmdterm_scaffold_lib::run()
+    mycelium_lib::run()
 }

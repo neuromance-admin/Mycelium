@@ -1,3 +1,4 @@
+use tauri::Manager;
 
 // ─── Vault Identity ────────────────────────────────────────────────────────
 
@@ -186,6 +187,70 @@ fn open_in_terminal(path: String, launch_claude: bool) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Install new vault via Claude CLI ────────────────────────────────────
+
+#[tauri::command]
+fn install_vault(app_handle: tauri::AppHandle, path: String) -> Result<(), String> {
+    // Copy bundled installer file into the chosen directory
+    let resource_path = app_handle
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?
+        .join("resources/_MyceliumInstaller-v0.5.1b.md");
+    let dest = std::path::Path::new(&path).join("_MyceliumInstaller-v0.5.1b.md");
+    std::fs::copy(&resource_path, &dest)
+        .map_err(|e| format!("Failed to copy installer file: {}", e))?;
+
+    // Open Terminal and run Claude against the installer file
+    let safe_path = path.replace('\'', "'\\''");
+    let shell_cmd = format!(
+        "cd '{}' && claude 'Read _MyceliumInstaller-v0.5.1b.md and execute the install procedure.'",
+        safe_path
+    );
+    let script = format!(
+        "tell application \"Terminal\"\nactivate\ndo script \"{}\"\nend tell",
+        shell_cmd.replace('"', "\\\"")
+    );
+    std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ─── Upgrade vault via Claude CLI ────────────────────────────────────────
+
+#[tauri::command]
+fn upgrade_vault(app_handle: tauri::AppHandle, path: String) -> Result<(), String> {
+    // Copy bundled upgrade file into the vault root
+    let resource_path = app_handle
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?
+        .join("resources/_SporeUpgrade-v0.5.1b.md");
+    let dest = std::path::Path::new(&path).join("_SporeUpgrade-v0.5.1b.md");
+    std::fs::copy(&resource_path, &dest)
+        .map_err(|e| format!("Failed to copy upgrade file: {}", e))?;
+
+    // Open Terminal and run Claude against the upgrade file
+    let safe_path = path.replace('\'', "'\\''");
+    let shell_cmd = format!(
+        "cd '{}' && claude 'Read _SporeUpgrade-v0.5.1b.md and execute the upgrade procedure.'",
+        safe_path
+    );
+    let script = format!(
+        "tell application \"Terminal\"\nactivate\ndo script \"{}\"\nend tell",
+        shell_cmd.replace('"', "\\\"")
+    );
+    std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 // ─── Open persona file in Obsidian ───────────────────────────────────────
 
 #[tauri::command]
@@ -218,6 +283,8 @@ pub fn run() {
             open_in_finder,
             open_in_obsidian,
             open_in_terminal,
+            install_vault,
+            upgrade_vault,
             open_persona_in_obsidian,
         ])
         .run(tauri::generate_context!())

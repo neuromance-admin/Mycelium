@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import "./App.css";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { Terminal, Bot, Folder, NotebookPen, X, SlidersHorizontal, User } from "lucide-react";
+import mushroomIcon from "./assets/mushroom.png";
 
 // ─── Version ───────────────────────────────────────────────────────────────
 
@@ -52,7 +54,6 @@ interface CliStatus {
 }
 
 interface AppSettings {
-  personaDir: string;
   defaultTerminal: string;
   claudeCliPath: string;
   theme: string;
@@ -62,7 +63,6 @@ interface AppSettings {
 // ─── Defaults ──────────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS: AppSettings = {
-  personaDir: "",
   defaultTerminal: "Terminal",
   claudeCliPath: "claude",
   theme: "dark",
@@ -139,7 +139,7 @@ function WarningsModal({
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <span className="modal-title">Vault Warnings</span>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {issues.length === 0 ? (
@@ -183,19 +183,9 @@ function SettingsModal({
       <div className="modal-content modal-content--settings" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <span className="modal-title">Settings</span>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          <label className="settings-field">
-            <span className="settings-label">Persona Directory</span>
-            <input
-              className="settings-input"
-              type="text"
-              value={local.personaDir}
-              onChange={(e) => update("personaDir", e.target.value)}
-              placeholder="/path/to/MyceliumPersonas"
-            />
-          </label>
           <label className="settings-field">
             <span className="settings-label">Default Terminal</span>
             <select
@@ -225,17 +215,28 @@ function SettingsModal({
               onChange={(e) => update("theme", e.target.value)}
             >
               <option value="dark">Dark</option>
-              <option value="light">Light (coming soon)</option>
+              <option value="light">Light</option>
             </select>
           </label>
           <label className="settings-field settings-field--row">
             <input
               type="checkbox"
+              className="settings-checkbox"
               checked={local.vaultScanOnLaunch}
               onChange={(e) => update("vaultScanOnLaunch", e.target.checked)}
             />
             <span className="settings-label">Scan vaults on launch</span>
           </label>
+          <div className="settings-divider" />
+          <div className="settings-credits">
+            <span className="settings-credits-title">Credits</span>
+            <span className="settings-credit">Mycelium made by <a href="https://www.neuromance.co.za/" target="_blank" rel="noreferrer">neuromance</a></span>
+            <span className="settings-credit">Mushroom app icon by <a href="https://www.vecteezy.com/png/17345522-mushroom-isolated-on-transparent" target="_blank" rel="noreferrer">Muharrem Adak</a></span>
+            <span className="settings-credit">Icons by <a href="https://lucide.dev/" target="_blank" rel="noreferrer">Lucide</a></span>
+            <span className="settings-credit">App framework by <a href="https://tauri.app/" target="_blank" rel="noreferrer">Tauri</a></span>
+            <span className="settings-credit">UI by <a href="https://react.dev/" target="_blank" rel="noreferrer">React</a></span>
+            <span className="settings-credit">AI by <a href="https://anthropic.com/" target="_blank" rel="noreferrer">Anthropic / Claude</a></span>
+          </div>
         </div>
         <div className="modal-footer">
           <button className="btn-action" onClick={onClose}>Cancel</button>
@@ -269,25 +270,22 @@ function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-left">
-        <span className="app-name">VMD Desktop</span>
-        <span className="app-version">v{APP_VERSION}</span>
-      </div>
-      <div className="top-bar-right">
-        <button className="btn-persona" onClick={onOpenOwnerPersona} title="Open Owner persona in Obsidian">
-          👤 Owner
-        </button>
-        <button className="btn-persona" onClick={onOpenAiPersona} title="Open AI persona in Obsidian">
-          🤖 AI
-        </button>
+        <img src={mushroomIcon} alt="Mycelium" className="app-logo" />
+        <span className="app-name">Mycelium</span>
         {cliStatus !== null && (
-          <span
-            className={`cli-status-badge cli-status--${cliStatus.installed ? "ok" : "error"}`}
-            title={cliStatus.installed ? `Claude CLI ${cliStatus.version}` : "Claude CLI not found"}
-          >
+          <span className={`cli-status-inline cli-status--${cliStatus.installed ? "ok" : "error"}`}>
             <span className={`health-dot health-${cliStatus.installed ? "healthy" : "error"}`} />
             Claude CLI {cliStatus.installed && cliStatus.version ? `v${cliStatus.version}` : ""}
           </span>
         )}
+      </div>
+      <div className="top-bar-right">
+        <button className="btn-persona" onClick={onOpenOwnerPersona} title="Open Owner persona in Obsidian">
+          <User size={16} /> Owner MD File
+        </button>
+        <button className="btn-persona" onClick={onOpenAiPersona} title="Open AI persona in Obsidian">
+          <Bot size={16} /> AI MD File
+        </button>
         <button
           className={`health-badge health-${health}`}
           onClick={onShowWarnings}
@@ -296,7 +294,7 @@ function TopBar({
           <HealthDot status={health} />
           {healthLabels[health]}
         </button>
-        <button className="btn-icon" title="Settings" onClick={onShowSettings}>⚙</button>
+        <button className="btn-icon" title="Settings" onClick={onShowSettings}><SlidersHorizontal size={24} /></button>
       </div>
     </header>
   );
@@ -311,6 +309,7 @@ function VaultCard({
   onRemove,
   onOpenFinder,
   onOpenObsidian,
+  onUpgrade,
 }: {
   vault: Vault;
   onOpen: (vault: Vault) => void;
@@ -318,38 +317,42 @@ function VaultCard({
   onRemove: (vault: Vault) => void;
   onOpenFinder: (vault: Vault) => void;
   onOpenObsidian: (vault: Vault) => void;
+  onUpgrade: (vault: Vault) => void;
 }) {
-  const cardStyle = {
-    background: "#1e1e22",
-    border: "1px solid #5a5a5e",
-    boxShadow: "0 2px 12px rgba(0, 0, 0, 0.2)",
-  };
+  const needsUpgrade = vault.health === "warning" && vault.healthMessage.includes("upgrade");
 
   return (
-    <div className="vault-card" style={cardStyle}>
-      <div className="vault-card-header">
-        <div className="vault-card-identity">
-          <span className="vault-colour-dot" style={{ background: vault.colour }} />
-          <HealthDot status={vault.health} />
-          <span className="vault-name">{vault.name}</span>
+    <div className="vault-card">
+      <div className="vault-card-colour-bar" style={{ background: vault.colour }} />
+      <button className="vault-card-close" onClick={() => onRemove(vault)} title="Remove vault"><X size={14} /></button>
+      <div className="vault-card-body">
+        <div className="vault-card-header">
+          <div className="vault-card-identity">
+            <HealthDot status={vault.health} />
+            <span className="vault-name">{vault.name}</span>
+          </div>
+          <span className="vault-ai-badge">{vault.aiName} · Spore {vault.sporeVersion}</span>
         </div>
-        <span className="vault-ai-badge">{vault.aiName} · Spore {vault.sporeVersion}</span>
-      </div>
-      {vault.healthMessage && (
-        <div className={`vault-health-message vault-health-message--${vault.health}`}>
-          {vault.healthMessage}
+        {vault.healthMessage && (
+          <div className={`vault-health-row ${needsUpgrade ? "vault-health-row--upgrade" : ""}`}>
+            <div className={`vault-health-message vault-health-message--${vault.health}`}>
+              {vault.healthMessage}
+            </div>
+            {needsUpgrade && (
+              <button className="btn-upgrade" onClick={() => onUpgrade(vault)}>Upgrade</button>
+            )}
+          </div>
+        )}
+        <div className="vault-card-meta">
+          <span className="vault-id">{vault.id}</span>
+          <span className="vault-path">{vault.path}</span>
         </div>
-      )}
-      <div className="vault-card-meta">
-        <span className="vault-id">{vault.id}</span>
-        <span className="vault-path">{vault.path}</span>
-      </div>
-      <div className="vault-card-actions">
-        <button className="btn-icon-sm" onClick={() => onOpen(vault)} title="Connect to vault AI (opens Terminal)">◎</button>
-        <button className="btn-icon-sm" onClick={() => onTerminal(vault)} title="Open terminal at vault root">⌨</button>
-        <button className="btn-icon-sm" onClick={() => onOpenFinder(vault)} title="Open in Finder">⌂</button>
-        <button className="btn-icon-sm" onClick={() => onOpenObsidian(vault)} title="Open in Obsidian">◈</button>
-        <button className="btn-icon-sm btn-icon-sm--danger" onClick={() => onRemove(vault)} title="Remove vault">✕</button>
+        <div className="vault-card-actions">
+          <button className="btn-icon-sm btn-icon-sm--labeled" onClick={() => onOpen(vault)} title="Connect to vault AI (opens Terminal)"><Bot size={14} /> Claude</button>
+          <button className="btn-icon-sm btn-icon-sm--labeled" onClick={() => onTerminal(vault)} title="Open terminal at vault root"><Terminal size={14} /> Terminal</button>
+          <button className="btn-icon-sm btn-icon-sm--labeled" onClick={() => onOpenFinder(vault)} title="Open in Finder"><Folder size={14} /> Finder</button>
+          <button className="btn-icon-sm btn-icon-sm--labeled" onClick={() => onOpenObsidian(vault)} title="Open in Obsidian"><NotebookPen size={14} /> Obsidian</button>
+        </div>
       </div>
     </div>
   );
@@ -365,6 +368,8 @@ function VaultRegistry({
   onOpenFinder,
   onOpenObsidian,
   onAddVault,
+  onInstallVault,
+  onUpgrade,
 }: {
   vaults: Vault[];
   onOpen: (vault: Vault) => void;
@@ -373,6 +378,8 @@ function VaultRegistry({
   onOpenFinder: (vault: Vault) => void;
   onOpenObsidian: (vault: Vault) => void;
   onAddVault: () => void;
+  onInstallVault: () => void;
+  onUpgrade: (vault: Vault) => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
@@ -391,7 +398,8 @@ function VaultRegistry({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <button className="btn-primary" onClick={onAddVault}>+ Add VMD</button>
+        <button className="btn-primary" onClick={onAddVault}>+ Add Vault</button>
+        <button className="btn-primary" onClick={onInstallVault}>+ Install New Vault</button>
       </div>
       <div className="vault-grid">
         {filtered.map((vault) => (
@@ -403,23 +411,28 @@ function VaultRegistry({
             onRemove={onRemove}
             onOpenFinder={onOpenFinder}
             onOpenObsidian={onOpenObsidian}
+            onUpgrade={onUpgrade}
           />
         ))}
       </div>
+      <div className="app-version-footer">Mycelium v{APP_VERSION}</div>
     </main>
   );
 }
 
 // ─── FirstRun ──────────────────────────────────────────────────────────────
 
-function FirstRun({ onAdd }: { onAdd: () => void }) {
+function FirstRun({ onAdd, onInstall }: { onAdd: () => void; onInstall: () => void }) {
   return (
     <div className="first-run">
       <div className="first-run-content">
         <div className="first-run-icon">⬡</div>
-        <h1>VMD Desktop</h1>
+        <h1>Mycelium</h1>
         <p className="first-run-subtitle">No vaults registered yet.</p>
-        <button className="btn-primary btn-primary--large" onClick={onAdd}>+ Add New Vault</button>
+        <div className="first-run-buttons">
+          <button className="btn-primary btn-primary--large" onClick={onAdd}>+ Add New Vault</button>
+          <button className="btn-primary btn-primary--large" onClick={onInstall}>+ Install New Vault</button>
+        </div>
       </div>
     </div>
   );
@@ -547,15 +560,31 @@ export default function App() {
     }
   }, [personaPaths]);
 
+  const handleInstallVault = useCallback(async () => {
+    const selected = await openDialog({ directory: true, multiple: false, title: "Select folder for new vault" });
+    if (!selected || typeof selected !== "string") return;
+    invoke("install_vault", { path: selected }).catch(console.error);
+  }, []);
+
+  const handleUpgrade = useCallback((vault: Vault) => {
+    invoke("upgrade_vault", { path: vault.path }).catch(console.error);
+  }, []);
+
   const handleSaveSettings = useCallback((s: AppSettings) => {
     setSettings(s);
     saveSettings(s);
+    document.documentElement.className = s.theme === "light" ? "theme-light" : "";
   }, []);
 
-  if (vaults.length === 0) return <FirstRun onAdd={handleAddVault} />;
+  // Apply saved theme on mount
+  useEffect(() => {
+    document.documentElement.className = settings.theme === "light" ? "theme-light" : "";
+  }, []);
+
+  if (vaults.length === 0) return <FirstRun onAdd={handleAddVault} onInstall={handleInstallVault} />;
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${settings.theme === "light" ? "theme-light" : ""}`}>
       <TopBar
         vaults={vaults}
         cliStatus={cliStatus}
@@ -572,6 +601,8 @@ export default function App() {
         onOpenFinder={handleOpenFinder}
         onOpenObsidian={handleOpenObsidian}
         onAddVault={handleAddVault}
+        onInstallVault={handleInstallVault}
+        onUpgrade={handleUpgrade}
       />
       {showWarnings && (
         <WarningsModal vaults={vaults} onClose={() => setShowWarnings(false)} />

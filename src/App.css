@@ -93,20 +93,39 @@ html, body, #root {
   -webkit-app-region: no-drag;
 }
 
+.app-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  margin-left: -5px;
+}
+
 .app-name {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 19px;
   color: var(--text);
   letter-spacing: -0.02em;
 }
 
-.app-version {
-  font-family: var(--font-mono);
+.cli-status-inline {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: 5px;
   font-size: 11px;
   color: var(--text-dim);
+}
+.cli-status-inline.cli-status--ok { color: var(--green); }
+.cli-status-inline.cli-status--error { color: var(--red); }
+
+.app-version-footer {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #ffffff;
   letter-spacing: 0.03em;
-  margin-right: 4px;
-  opacity: 0.7;
+  text-align: right;
+  padding: 8px 4px 4px;
+  margin-top: auto;
 }
 
 .search-input {
@@ -130,9 +149,9 @@ html, body, #root {
 .btn-persona {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  padding: 4px 10px;
+  gap: 6px;
+  font-size: 14px;
+  padding: 6px 14px;
   border-radius: 99px;
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.15);
@@ -143,7 +162,7 @@ html, body, #root {
 .btn-persona:hover {
   background: var(--bg-hover);
   color: var(--text);
-  border-color: var(--accent);
+  border-color: #ffffff;
 }
 
 /* ─── Buttons ────────────────────────────────────────────────────── */
@@ -176,9 +195,9 @@ button {
 .btn-icon {
   background: transparent;
   color: #9a9a9e;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
-  font-size: 24px;
+  font-size: 28px;
 }
 .btn-icon:hover { background: var(--bg-hover); color: var(--text); }
 
@@ -194,7 +213,7 @@ button {
 .btn-action:hover {
   background: var(--bg-hover);
   color: var(--text);
-  border-color: var(--accent);
+  border-color: #ffffff;
 }
 .btn-action--active {
   background: rgba(0,0,0,0.25);
@@ -220,7 +239,14 @@ button {
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.btn-icon-sm:hover { background: var(--bg-hover); color: var(--text); border-color: var(--accent); }
+.btn-icon-sm:hover { background: var(--bg-hover); color: var(--text); border-color: #ffffff; }
+.btn-icon-sm--labeled {
+  width: auto;
+  gap: 5px;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
 .btn-icon-sm--active { background: rgba(0,0,0,0.25); font-weight: 600; }
 .btn-icon-sm--danger { color: #f87171; }
 .btn-icon-sm--danger:hover { border-color: #f87171; background: rgba(248,113,113,0.08); color: #f87171; }
@@ -242,8 +268,8 @@ button {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 13px;
-  padding: 4px 12px;
+  font-size: 14px;
+  padding: 6px 14px;
   border-radius: 99px;
   border: 1px solid var(--border);
   background: rgba(0,0,0,0.15);
@@ -252,7 +278,7 @@ button {
 }
 .health-badge:hover {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  border-color: #ffffff;
 }
 .health-badge.health-healthy { color: var(--green); }
 .health-badge.health-warning { color: var(--amber); }
@@ -278,7 +304,7 @@ button {
 /* ─── Vault Health Message ───────────────────────────────────────── */
 
 .vault-health-message {
-  font-size: 11px;
+  font-size: 13px;
   padding: 3px 8px;
   border-radius: 5px;
   font-family: var(--font-mono);
@@ -309,7 +335,7 @@ button {
 
 .vault-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 12px;
   align-content: start;
 }
@@ -345,17 +371,56 @@ button {
 
 .vault-card {
   border-radius: var(--radius);
-  padding: 14px 16px;
+  background: #1e1e22;
+  border: 1px solid #5a5a5e;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  position: relative;
   overflow: hidden;
   cursor: default;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .vault-card:hover {
   transform: translateY(-2px);
+}
+
+.vault-card-colour-bar {
+  height: 4px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.vault-card-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  color: #6a6a6e;
+  border: none;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  z-index: 1;
+}
+.vault-card-close:hover {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.vault-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px 16px 14px;
+  flex: 1;
 }
 
 .vault-card-header {
@@ -364,6 +429,7 @@ button {
   justify-content: space-between;
   flex-direction: column;
   gap: 4px;
+  padding-right: 24px;
 }
 
 .vault-card-identity {
@@ -372,18 +438,10 @@ button {
   gap: 7px;
 }
 
-.vault-colour-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
-}
-
 .vault-id {
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: rgba(255,255,255,0.45);
+  font-size: 13px;
+  color: #a8e6cf;
 }
 
 .vault-name {
@@ -394,8 +452,8 @@ button {
 }
 
 .vault-ai-badge {
-  font-size: 11px;
-  color: rgba(255,255,255,0.4);
+  font-size: 13px;
+  color: #a8e6cf;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
 }
@@ -405,15 +463,15 @@ button {
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
-  color: rgba(255,255,255,0.5);
+  color: #a8e6cf;
 }
 
 .meta-sep { display: none; }
 
 .vault-path {
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: rgba(255,255,255,0.3);
+  font-size: 12px;
+  color: #a8e6cf;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -423,7 +481,36 @@ button {
 .vault-card-actions {
   display: flex;
   gap: 6px;
-  margin-top: 2px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+/* ─── Upgrade Button & Health Row ───────────────────────────────── */
+
+.vault-health-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vault-health-row--upgrade .vault-health-message {
+  flex: 1;
+}
+
+.btn-upgrade {
+  background: var(--amber);
+  color: #1a1a1e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.btn-upgrade:hover {
+  background: #fbbf24;
 }
 
 /* ─── Terminal Outer Panel ───────────────────────────────────────── */
@@ -704,6 +791,11 @@ button {
   font-size: 16px;
 }
 
+.first-run-buttons {
+  display: flex;
+  gap: 12px;
+}
+
 .first-run-alt {
   display: flex;
   align-items: center;
@@ -822,20 +914,23 @@ button {
 .settings-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .settings-field--row {
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  line-height: 1.8;
+  margin-top: 8px;
 }
 
 .settings-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.02em;
+  line-height: 1.8;
 }
 
 .settings-input {
@@ -845,13 +940,198 @@ button {
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 13px;
-  padding: 7px 10px;
+  padding: 8px 10px;
+  height: 36px;
   outline: none;
   transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
 }
-.settings-input:focus { border-color: var(--accent); }
+.settings-input:focus { border-color: #ffffff; }
+
+select.settings-input {
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a9a9e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
 
 .settings-input option {
   background: var(--bg-surface);
   color: var(--text);
+}
+
+.settings-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  position: relative;
+}
+.settings-checkbox:checked {
+  background: #1a1a1e;
+}
+.settings-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 7px;
+  height: 13px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 6px 0;
+}
+
+.settings-credits {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-credits-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.settings-credit {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.settings-credit a {
+  color: #ffffff;
+  text-decoration: none;
+}
+.settings-credit a:hover {
+  color: #d0d0d4;
+  text-decoration: underline;
+}
+
+/* ─── Light Theme ───────────────────────────────────────────────── */
+
+.theme-light {
+  --bg: #f0f0f2;
+  --bg-surface: #ffffff;
+  --bg-raised: #e8e8ec;
+  --bg-hover: #dcdce0;
+  --border: #c0c0c4;
+  --border-subtle: #d4d4d8;
+
+  --text: #1a1a1e;
+  --text-muted: #5a5a5e;
+  --text-dim: #8a8a8e;
+}
+
+.theme-light .top-bar {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.02) 2px,
+      rgba(0, 0, 0, 0.02) 4px
+    ),
+    linear-gradient(90deg, #e4e4e8 0%, #dcdce0 100%);
+  border-bottom: 1px solid #c0c0c4;
+}
+
+.theme-light .app-name { color: #1a1a1e; }
+
+.theme-light .cli-status-inline { color: var(--text-dim); }
+.theme-light .cli-status-inline.cli-status--ok { color: var(--green); }
+.theme-light .cli-status-inline.cli-status--error { color: var(--red); }
+
+.theme-light .app-shell {
+  background: linear-gradient(160deg, #f0f0f2 0%, #e8e8ec 50%, #f0f0f2 100%);
+}
+
+.theme-light .vault-card {
+  background: #ffffff !important;
+  border-color: #c0c0c4 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.theme-light .vault-name { color: #1a1a1e; }
+.theme-light .vault-ai-badge { color: #5a5a5e; }
+.theme-light .vault-id { color: #5a5a5e; }
+.theme-light .vault-path { color: #8a8a8e; }
+.theme-light .vault-card-meta { color: #5a5a5e; }
+
+.theme-light .vault-card-close { color: #8a8a8e; }
+.theme-light .vault-card-close:hover { color: #f87171; }
+
+.theme-light .vault-search-input {
+  background: #ffffff;
+  border-color: #c0c0c4;
+  color: #1a1a1e;
+}
+.theme-light .vault-search-input::placeholder { color: #8a8a8e; }
+.theme-light .vault-search-input:focus { border-color: #8a8a8e; }
+
+.theme-light .btn-primary {
+  background: #d4d4d8;
+  color: #1a1a1e;
+  border-color: #c0c0c4;
+}
+.theme-light .btn-primary:hover { background: #c0c0c4; }
+
+.theme-light .btn-icon { color: #5a5a5e; }
+.theme-light .btn-icon:hover { background: #dcdce0; color: #1a1a1e; }
+
+.theme-light .btn-persona {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: #c0c0c4;
+  color: #5a5a5e;
+}
+.theme-light .btn-persona:hover { background: #dcdce0; color: #1a1a1e; border-color: #1a1a1e; }
+
+.theme-light .btn-icon-sm {
+  background: rgba(0, 0, 0, 0.05);
+  color: #5a5a5e;
+  border-color: #c0c0c4;
+}
+.theme-light .btn-icon-sm:hover { background: #dcdce0; color: #1a1a1e; border-color: #1a1a1e; }
+
+.theme-light .health-badge {
+  border-color: #c0c0c4;
+  background: rgba(0, 0, 0, 0.04);
+}
+.theme-light .health-badge:hover { border-color: #1a1a1e; }
+
+.theme-light .modal-content {
+  background: #ffffff;
+  border-color: #c0c0c4;
+}
+
+.theme-light .settings-input {
+  background: #f0f0f2;
+  border-color: #c0c0c4;
+  color: #1a1a1e;
+}
+
+.theme-light .app-version-footer { color: #5a5a5e; }
+
+.theme-light .first-run { background: #f0f0f2; }
+
+html.theme-light, html.theme-light body, html.theme-light #root {
+  background: #f0f0f2;
+  color: #1a1a1e;
 }
