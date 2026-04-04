@@ -42,12 +42,32 @@ interface RustVaultIdentity {
   spore_version: string;
   health: string;
   health_message: string;
+  persona_mode: string;
+  persona_dir: string;
 }
 
 interface CliStatus {
   installed: boolean;
   version: string;
 }
+
+interface AppSettings {
+  personaDir: string;
+  defaultTerminal: string;
+  claudeCliPath: string;
+  theme: string;
+  vaultScanOnLaunch: boolean;
+}
+
+// ─── Defaults ──────────────────────────────────────────────────────────────
+
+const DEFAULT_SETTINGS: AppSettings = {
+  personaDir: "",
+  defaultTerminal: "Terminal",
+  claudeCliPath: "claude",
+  theme: "dark",
+  vaultScanOnLaunch: true,
+};
 
 // ─── Vault persistence ─────────────────────────────────────────────────────
 
@@ -61,6 +81,18 @@ function loadVaults(): Vault[] {
 
 function saveVaults(vaults: Vault[]) {
   localStorage.setItem("vmd-vaults", JSON.stringify(vaults));
+}
+
+function loadSettings(): AppSettings {
+  try {
+    const stored = localStorage.getItem("vmd-settings");
+    if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+  } catch {}
+  return DEFAULT_SETTINGS;
+}
+
+function saveSettings(settings: AppSettings) {
+  localStorage.setItem("vmd-settings", JSON.stringify(settings));
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -91,16 +123,145 @@ function HealthDot({ status }: { status: "healthy" | "warning" | "error" }) {
   return <span className={`health-dot health-${status}`} />;
 }
 
+// ─── WarningsModal ─────────────────────────────────────────────────────────
+
+function WarningsModal({
+  vaults,
+  onClose,
+}: {
+  vaults: Vault[];
+  onClose: () => void;
+}) {
+  const issues = vaults.filter((v) => v.health !== "healthy");
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">Vault Warnings</span>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {issues.length === 0 ? (
+            <p className="modal-empty">All vaults are healthy.</p>
+          ) : (
+            issues.map((v) => (
+              <div key={v.id} className={`warning-item warning-item--${v.health}`}>
+                <span className="vault-colour-dot" style={{ background: v.colour }} />
+                <div className="warning-item-detail">
+                  <span className="warning-item-name">{v.name}</span>
+                  <span className="warning-item-message">{v.healthMessage}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SettingsModal ─────────────────────────────────────────────────────────
+
+function SettingsModal({
+  settings,
+  onSave,
+  onClose,
+}: {
+  settings: AppSettings;
+  onSave: (s: AppSettings) => void;
+  onClose: () => void;
+}) {
+  const [local, setLocal] = useState<AppSettings>({ ...settings });
+
+  const update = (key: keyof AppSettings, value: string | boolean) => {
+    setLocal((prev) => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content modal-content--settings" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">Settings</span>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <label className="settings-field">
+            <span className="settings-label">Persona Directory</span>
+            <input
+              className="settings-input"
+              type="text"
+              value={local.personaDir}
+              onChange={(e) => update("personaDir", e.target.value)}
+              placeholder="/path/to/MyceliumPersonas"
+            />
+          </label>
+          <label className="settings-field">
+            <span className="settings-label">Default Terminal</span>
+            <select
+              className="settings-input"
+              value={local.defaultTerminal}
+              onChange={(e) => update("defaultTerminal", e.target.value)}
+            >
+              <option value="Terminal">Terminal.app</option>
+              <option value="iTerm">iTerm2</option>
+            </select>
+          </label>
+          <label className="settings-field">
+            <span className="settings-label">Claude CLI Path</span>
+            <input
+              className="settings-input"
+              type="text"
+              value={local.claudeCliPath}
+              onChange={(e) => update("claudeCliPath", e.target.value)}
+              placeholder="claude"
+            />
+          </label>
+          <label className="settings-field">
+            <span className="settings-label">Theme</span>
+            <select
+              className="settings-input"
+              value={local.theme}
+              onChange={(e) => update("theme", e.target.value)}
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light (coming soon)</option>
+            </select>
+          </label>
+          <label className="settings-field settings-field--row">
+            <input
+              type="checkbox"
+              checked={local.vaultScanOnLaunch}
+              onChange={(e) => update("vaultScanOnLaunch", e.target.checked)}
+            />
+            <span className="settings-label">Scan vaults on launch</span>
+          </label>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-action" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={() => { onSave(local); onClose(); }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── TopBar ────────────────────────────────────────────────────────────────
 
 function TopBar({
   vaults,
   cliStatus,
-  onAddVault,
+  onOpenOwnerPersona,
+  onOpenAiPersona,
+  onShowWarnings,
+  onShowSettings,
 }: {
   vaults: Vault[];
   cliStatus: CliStatus | null;
-  onAddVault: () => void;
+  onOpenOwnerPersona: () => void;
+  onOpenAiPersona: () => void;
+  onShowWarnings: () => void;
+  onShowSettings: () => void;
 }) {
   const health = getAggregateHealth(vaults);
   const healthLabels = { healthy: "All healthy", warning: "Warnings", error: "Errors" };
@@ -110,24 +271,32 @@ function TopBar({
       <div className="top-bar-left">
         <span className="app-name">VMD Desktop</span>
         <span className="app-version">v{APP_VERSION}</span>
-        <button className="btn-primary" onClick={onAddVault}>+ Add VMD</button>
       </div>
       <div className="top-bar-right">
+        <button className="btn-persona" onClick={onOpenOwnerPersona} title="Open Owner persona in Obsidian">
+          👤 Owner
+        </button>
+        <button className="btn-persona" onClick={onOpenAiPersona} title="Open AI persona in Obsidian">
+          🤖 AI
+        </button>
         {cliStatus !== null && (
           <span
             className={`cli-status-badge cli-status--${cliStatus.installed ? "ok" : "error"}`}
             title={cliStatus.installed ? `Claude CLI ${cliStatus.version}` : "Claude CLI not found"}
           >
             <span className={`health-dot health-${cliStatus.installed ? "healthy" : "error"}`} />
-            Claude CLI
+            Claude CLI {cliStatus.installed && cliStatus.version ? `v${cliStatus.version}` : ""}
           </span>
         )}
-        <span className="vault-count">{vaults.length} vault{vaults.length !== 1 ? "s" : ""}</span>
-        <span className={`health-badge health-${health}`}>
+        <button
+          className={`health-badge health-${health}`}
+          onClick={onShowWarnings}
+          title="View vault warnings"
+        >
           <HealthDot status={health} />
           {healthLabels[health]}
-        </span>
-        <button className="btn-icon" title="Settings">⚙</button>
+        </button>
+        <button className="btn-icon" title="Settings" onClick={onShowSettings}>⚙</button>
       </div>
     </header>
   );
@@ -150,22 +319,17 @@ function VaultCard({
   onOpenFinder: (vault: Vault) => void;
   onOpenObsidian: (vault: Vault) => void;
 }) {
-  const c = vault.colour;
-
   const cardStyle = {
-    background: `linear-gradient(135deg,
-      color-mix(in srgb, ${c} 38%, #1e3733) 0%,
-      color-mix(in srgb, ${c} 18%, #172b28) 45%,
-      #172b28 100%)`,
-    border: `1px solid color-mix(in srgb, ${c} 30%, transparent)`,
-    boxShadow: `0 2px 12px color-mix(in srgb, ${c} 10%, transparent)`,
+    background: "#1e1e22",
+    border: "1px solid #5a5a5e",
+    boxShadow: "0 2px 12px rgba(0, 0, 0, 0.2)",
   };
 
   return (
     <div className="vault-card" style={cardStyle}>
       <div className="vault-card-header">
         <div className="vault-card-identity">
-          <span className="vault-colour-dot" style={{ background: c }} />
+          <span className="vault-colour-dot" style={{ background: vault.colour }} />
           <HealthDot status={vault.health} />
           <span className="vault-name">{vault.name}</span>
         </div>
@@ -200,6 +364,7 @@ function VaultRegistry({
   onRemove,
   onOpenFinder,
   onOpenObsidian,
+  onAddVault,
 }: {
   vaults: Vault[];
   onOpen: (vault: Vault) => void;
@@ -207,6 +372,7 @@ function VaultRegistry({
   onRemove: (vault: Vault) => void;
   onOpenFinder: (vault: Vault) => void;
   onOpenObsidian: (vault: Vault) => void;
+  onAddVault: () => void;
 }) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
@@ -225,6 +391,7 @@ function VaultRegistry({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+        <button className="btn-primary" onClick={onAddVault}>+ Add VMD</button>
       </div>
       <div className="vault-grid">
         {filtered.map((vault) => (
@@ -263,12 +430,33 @@ function FirstRun({ onAdd }: { onAdd: () => void }) {
 export default function App() {
   const [vaults, setVaults] = useState<Vault[]>(loadVaults);
   const [cliStatus, setCliStatus] = useState<CliStatus | null>(null);
+  const [showWarnings, setShowWarnings] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  const [personaPaths, setPersonaPaths] = useState<{ owner: string; ai: string } | null>(null);
 
   useEffect(() => {
     invoke<CliStatus>("check_claude_cli")
       .then(setCliStatus)
       .catch(() => setCliStatus({ installed: false, version: "" }));
   }, []);
+
+  // Resolve persona paths from the first vault that has them
+  useEffect(() => {
+    if (vaults.length === 0) return;
+    const vault = vaults[0];
+    invoke<RustVaultIdentity>("read_vault_identity", { path: vault.path })
+      .then((identity) => {
+        if (identity.persona_mode === "external" && identity.persona_dir) {
+          const base = vault.path + "/" + identity.persona_dir;
+          setPersonaPaths({
+            owner: base + "Owner/halicon.md",
+            ai: base + "AI/Eve.md",
+          });
+        }
+      })
+      .catch(() => {});
+  }, [vaults]);
 
   // Refresh vault health from disk on every launch
   useEffect(() => {
@@ -347,11 +535,35 @@ export default function App() {
     invoke("open_in_obsidian", { path: vault.path }).catch(console.error);
   }, []);
 
+  const handleOpenOwnerPersona = useCallback(() => {
+    if (personaPaths) {
+      invoke("open_persona_in_obsidian", { filePath: personaPaths.owner }).catch(console.error);
+    }
+  }, [personaPaths]);
+
+  const handleOpenAiPersona = useCallback(() => {
+    if (personaPaths) {
+      invoke("open_persona_in_obsidian", { filePath: personaPaths.ai }).catch(console.error);
+    }
+  }, [personaPaths]);
+
+  const handleSaveSettings = useCallback((s: AppSettings) => {
+    setSettings(s);
+    saveSettings(s);
+  }, []);
+
   if (vaults.length === 0) return <FirstRun onAdd={handleAddVault} />;
 
   return (
     <div className="app-shell">
-      <TopBar vaults={vaults} cliStatus={cliStatus} onAddVault={handleAddVault} />
+      <TopBar
+        vaults={vaults}
+        cliStatus={cliStatus}
+        onOpenOwnerPersona={handleOpenOwnerPersona}
+        onOpenAiPersona={handleOpenAiPersona}
+        onShowWarnings={() => setShowWarnings(true)}
+        onShowSettings={() => setShowSettings(true)}
+      />
       <VaultRegistry
         vaults={vaults}
         onOpen={handleOpen}
@@ -359,7 +571,18 @@ export default function App() {
         onRemove={handleRemoveVault}
         onOpenFinder={handleOpenFinder}
         onOpenObsidian={handleOpenObsidian}
+        onAddVault={handleAddVault}
       />
+      {showWarnings && (
+        <WarningsModal vaults={vaults} onClose={() => setShowWarnings(false)} />
+      )}
+      {showSettings && (
+        <SettingsModal
+          settings={settings}
+          onSave={handleSaveSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

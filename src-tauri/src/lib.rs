@@ -170,12 +170,38 @@ fn open_in_terminal(path: String, launch_claude: bool) -> Result<(), String> {
             .spawn()
             .map_err(|e| e.to_string())?;
     } else {
-        // Terminal mode: open VS Code at vault root
-        std::process::Command::new("open")
-            .args(["-a", "Visual Studio Code", &path])
+        // Terminal mode: open Apple Terminal at vault root
+        let safe_path = path.replace('\'', "'\\''");
+        let shell_cmd = format!("cd '{}'", safe_path);
+        let script = format!(
+            "tell application \"Terminal\"\nactivate\ndo script \"{}\"\nend tell",
+            shell_cmd.replace('"', "\\\"")
+        );
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+// ─── Open persona file in Obsidian ───────────────────────────────────────
+
+#[tauri::command]
+fn open_persona_in_obsidian(file_path: String) -> Result<(), String> {
+    let encoded: String = file_path.chars().map(|c| match c {
+        ' ' => "%20".to_string(),
+        '%' => "%25".to_string(),
+        '?' => "%3F".to_string(),
+        '#' => "%23".to_string(),
+        '&' => "%26".to_string(),
+        _   => c.to_string(),
+    }).collect();
+    std::process::Command::new("open")
+        .arg(format!("obsidian://open?path={}", encoded))
+        .spawn()
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -192,6 +218,7 @@ pub fn run() {
             open_in_finder,
             open_in_obsidian,
             open_in_terminal,
+            open_persona_in_obsidian,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
