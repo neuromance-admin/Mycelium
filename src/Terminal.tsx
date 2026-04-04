@@ -34,7 +34,7 @@ export function Terminal({ session, isActive, onActivity }: Props) {
       theme: {
         background: "#111f1e",
         foreground: "#e8f5f3",
-        cursor: session.colour,           // matches vault colour
+        cursor: session.colour,
         cursorAccent: "#111f1e",
         selectionBackground: "#2a4f4a",
         black: "#172b28",
@@ -60,33 +60,68 @@ export function Terminal({ session, isActive, onActivity }: Props) {
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    term.open(containerRef.current);
-
-    // Double-rAF ensures the container has been painted before fitting
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        fitAddon.fit();
-        const d = fitAddon.proposeDimensions();
-        if (d) {
-          invoke("pty_resize", { sessionId: session.id, cols: d.cols, rows: d.rows }).catch(() => {});
-        }
-        term.refresh(0, term.rows - 1);
-      });
-    });
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // PTY data listener
+    // Register PTY data listener before spawning
     const unlistenPromise = listen<string>(`pty-data-${session.id}`, (event) => {
       term.write(event.payload);
+      term.scrollToBottom();
       onActivity(session.id);
     });
 
-    // Keyboard input — normalise bare CR → CR+LF so shells execute on first Enter
+    // Send keystrokes as-is — PTY line discipline handles CR→LF conversion
     const onDataDisposable = term.onData((data) => {
-      const toWrite = data === "\r" ? "\r\n" : data;
-      invoke("pty_write", { sessionId: session.id, data: toWrite }).catch(console.error);
+      invoke("pty_write", { sessionId: session.id, data }).catch(console.error);
+    });
+
+    // Open xterm and spawn PTY inside double-rAF so the container is
+    // guaranteed to be painted with real dimensions before xterm initialises.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!containerRef.current) return;
+
+        term.open(containerRef.current);
+        fitAddon.fit();
+
+        const d = fitAddon.proposeDimensions();
+        const cols = d?.cols ?? 80;
+        const rows = d?.rows ?? 24;
+
+        term.refresh(0, term.rows - 1);
+        term.focus();
+
+        // Spawn PTY once xterm is properly initialised
+        if (!spawnedRef.current) {
+          spawnedRef.current = true;
+          unlistenPromise.then(() => {
+            invoke("pty_create", {
+              sessionId: session.id,
+              vaultPath: session.vaultPath,
+              cols,
+              rows,
+              launchClaude: session.mode === "connect",
+            })
+              .then(() => {
+                // SIGWINCH after shell starts — forces zsh to redraw prompt
+                setTimeout(() => {
+                  const dims = fitAddonRef.current?.proposeDimensions();
+                  if (dims) {
+                    invoke("pty_resize", {
+                      sessionId: session.id,
+                      cols: dims.cols,
+                      rows: dims.rows,
+                    }).catch(() => {});
+                  }
+                }, 400);
+              })
+              .catch((err) => {
+                term.writeln(`\r\nFailed to start terminal: ${err}\r\n`);
+              });
+          });
+        }
+      });
     });
 
     // Resize observer
@@ -101,21 +136,7 @@ export function Terminal({ session, isActive, onActivity }: Props) {
         });
       });
     });
-    observer.observe(containerRef.current);
-
-    // Spawn PTY once
-    if (!spawnedRef.current) {
-      spawnedRef.current = true;
-      invoke("pty_create", {
-        sessionId: session.id,
-        vaultPath: session.vaultPath,
-        cols: 80,
-        rows: 24,
-        launchClaude: session.mode === "connect",
-      }).catch((err) => {
-        term.writeln(`\r\nFailed to start terminal: ${err}\r\n`);
-      });
-    }
+    if (containerRef.current) observer.observe(containerRef.current);
 
     return () => {
       unlistenPromise.then((fn) => fn());
@@ -125,7 +146,7 @@ export function Terminal({ session, isActive, onActivity }: Props) {
     };
   }, []);
 
-  // Refit when tab becomes active — double-rAF to let display:flex paint first
+  // Refit and focus when tab becomes active
   useEffect(() => {
     if (!isActive) return;
     requestAnimationFrame(() => {
@@ -137,6 +158,7 @@ export function Terminal({ session, isActive, onActivity }: Props) {
         }
         if (xtermRef.current) {
           xtermRef.current.refresh(0, xtermRef.current.rows - 1);
+          xtermRef.current.focus();
         }
       });
     });

@@ -51,18 +51,17 @@ html, body, #root {
 .app-shell {
   display: grid;
   grid-template-rows: var(--top-bar-height) 1fr;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 1fr;
   grid-template-areas:
-    "topbar topbar"
-    "registry terminal";
+    "topbar"
+    "registry";
   height: 100vh;
   overflow: hidden;
   background: linear-gradient(160deg, #162926 0%, #1a2e2b 50%, #162926 100%);
 }
 
-.top-bar              { grid-area: topbar; }
-.vault-registry       { grid-area: registry; }
-.terminal-panel-outer { grid-area: terminal; }
+.top-bar        { grid-area: topbar; }
+.vault-registry { grid-area: registry; }
 
 /* ─── Top Bar ────────────────────────────────────────────────────── */
 
@@ -181,6 +180,26 @@ button {
 .btn-action--danger { color: #f87171; }
 .btn-action--danger:hover { border-color: #f87171; background: rgba(248,113,113,0.08); color: #f87171; }
 
+.btn-icon-sm {
+  background: rgba(0,0,0,0.2);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-icon-sm:hover { background: var(--bg-hover); color: var(--text); border-color: var(--accent); }
+.btn-icon-sm--active { background: rgba(0,0,0,0.25); font-weight: 600; }
+.btn-icon-sm--danger { color: #f87171; }
+.btn-icon-sm--danger:hover { border-color: #f87171; background: rgba(248,113,113,0.08); color: #f87171; }
+
 /* ─── Health ─────────────────────────────────────────────────────── */
 
 .health-dot {
@@ -208,20 +227,84 @@ button {
 .health-badge.health-warning { color: var(--amber); }
 .health-badge.health-error   { color: var(--red); }
 
+/* ─── CLI Status Badge ───────────────────────────────────────────── */
+
+.cli-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+  color: var(--text-dim);
+  cursor: default;
+}
+.cli-status--ok  { color: var(--green); }
+.cli-status--error { color: var(--red); }
+
+/* ─── Vault Health Message ───────────────────────────────────────── */
+
+.vault-health-message {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+}
+.vault-health-message--warning {
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.1);
+}
+.vault-health-message--error {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* ─── Vault Registry ─────────────────────────────────────────────── */
 
 .vault-registry {
   overflow-y: auto;
-  padding: 14px 12px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
   background: transparent;
-  border-right: 1px solid var(--border);
 }
-.vault-registry::-webkit-scrollbar { width: 4px; }
+.vault-registry::-webkit-scrollbar { width: 6px; }
 .vault-registry::-webkit-scrollbar-track { background: transparent; }
-.vault-registry::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.vault-registry::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.vault-registry::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+/* ─── Vault Search ───────────────────────────────────────────────── */
+
+.vault-search {
+  flex-shrink: 0;
+  padding: 0 0 8px 0;
+}
+
+.vault-search-input {
+  width: 100%;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.vault-search-input::placeholder { color: var(--text-dim); }
+.vault-search-input:focus { border-color: var(--accent); }
 
 /* ─── Vault Card ─────────────────────────────────────────────────── */
 
