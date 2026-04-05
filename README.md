@@ -1,6 +1,8 @@
-# Mycelium
+# Mycelium Desktop
 
-The desktop companion for Mycelium vaults — register, manage, launch, and upgrade AI-memory vaults from a single native macOS app.
+**Keep your AI's context across every conversation.** Mycelium Desktop is the native macOS companion for Mycelium vaults — register, manage, launch, and upgrade your AI-memory vaults from a single window.
+
+![Mycelium Desktop — vault registry](public/screenshot.png)
 
 Built with Tauri, React, and Rust.
 
@@ -8,13 +10,21 @@ Built with Tauri, React, and Rust.
 
 ---
 
-## What is Mycelium?
+## Why does this exist?
 
-![Mycelium Desktop — vault registry](public/screenshot.png)  
+Every conversation with an AI starts from zero. You spend the first five minutes of every session re-explaining context that should already be there — who you are, what you're building, what you decided last week, what not to suggest again. Or you skip the re-briefing and get generic output. Either way, the memory problem taxes every interaction.
 
-**Mycelium is a persistent memory framework for AI assistants.** It's a way to give a model like Claude long-term context that survives across sessions, projects, and machines. A **Mycelium vault** is a folder of structured markdown that describes a person, their work, their relationships, and their intent. Claude reads the vault at the start of every session and arrives knowing who you are and what you're working on — no re-onboarding, no lost context.
+The fix isn't a better model. It's giving the model a memory it doesn't own. **Mycelium** is a framework for exactly that: a convention for local-first, portable AI memory stored as plain markdown on your disk — legible to humans, editable by hand, versionable in git, and carried across tools. Claude reads your vault at the start of every session and arrives knowing you. When the next model arrives, your memory comes with you.
 
-**This app is the desktop companion** for managing those vaults. It doesn't run the AI — it runs the *operations* around the AI: vault registration, health checks, terminal launching, install and upgrade flows, persona file management. One native window, all your vaults, one click to any of them.
+**Mycelium Desktop** is the tool that makes running vaults effortless — vault registry, health checks, one-click Claude sessions, install and upgrade flows, persona management. One native window, all your vaults, no terminal gymnastics required.
+
+---
+
+## What is the Mycelium framework?
+
+A **Mycelium vault** is a folder of structured markdown that describes a person, their work, their relationships, and their intent. At its core is **Spore** — a lean runtime specification that tells any AI assistant how to boot into the vault: what to read, in what order, under what rules, with what version discipline. Claude reads the vault at the start of every session and arrives knowing who you are and what you're working on — no re-onboarding, no lost context, no vendor lock-in.
+
+**Mycelium Desktop** (this repo) is the companion app for managing those vaults. It doesn't run the AI — it runs the *operations* around the AI: vault registration, health checks, terminal launching, install and upgrade flows, persona file management. The Spore runtime itself ships bundled inside the app (see `src-tauri/resources/`) and will live in its own repo as it stabilises.
 
 Mycelium is built and maintained by [neuromance](https://www.neuromance.co.za).
 
@@ -33,7 +43,7 @@ Mycelium is built and maintained by [neuromance](https://www.neuromance.co.za).
 
 ### Installing an unsigned build
 
-Mycelium is not yet code-signed by Apple. When you first open the DMG, macOS will warn you that the app "can't be opened" or "is damaged." **This is expected** — it's Gatekeeper being strict about any app from a developer who hasn't paid the Apple Developer fee. A signed build will follow once the product graduates from release candidate.
+Mycelium Desktop is not yet code-signed by Apple. When you first open the DMG, macOS will warn you that the app "can't be opened" or "is damaged." **This is expected** — it's Gatekeeper being strict about any app from a developer who hasn't paid the Apple Developer fee. A signed build will follow once the product graduates from release candidate.
 
 **To unlock on first launch:**
 
@@ -51,7 +61,7 @@ If step 3 doesn't show an **Open** button, go to **System Settings → Privacy &
 - **Vault registry** — see every registered Mycelium vault with health status, runtime version, and owner info
 - **One-click actions** — open any vault in Claude, Terminal, Finder, or Obsidian
 - **Claude sessions** — the Claude button launches your chosen terminal with the vault's runtime loaded, so a full Mycelium session spins up in one click
-- **Install new vaults** — pick a folder, Mycelium drops in the bundled installer and launches Claude to run it
+- **Install new vaults** — pick a folder, Mycelium Desktop drops in the bundled installer and launches Claude to run it
 - **Upgrade vaults** — bumps a vault's runtime to the latest Spore version with one click
 - **Dynamic terminal detection** — Terminal.app, iTerm2, Warp, Ghostty, Kitty, and Alacritty are detected automatically; pick your preferred one in Settings
 - **Light and dark themes** with a working in-app toggle
@@ -61,7 +71,7 @@ If step 3 doesn't show an **Open** button, go to **System Settings → Privacy &
 
 ## Building from source
 
-Contributors and the curious can build Mycelium locally.
+Contributors and the curious can build Mycelium Desktop locally.
 
 ### Prerequisites
 
@@ -120,13 +130,13 @@ Mycelium/
 └── RELEASE_NOTES.md
 ```
 
-The `resources/` directory ships the current Mycelium runtime files inside the app bundle — so a fresh install of Mycelium always has the installer and upgrade procedures it needs, without an external download.
+The `resources/` directory ships the current Spore runtime files inside the app bundle — so a fresh install of Mycelium Desktop always has the installer and upgrade procedures it needs, without an external download.
 
 ---
 
 ## Feedback
 
-This is a release candidate precisely because the best bugs are found by other people. If you try Mycelium and something breaks, surprises you, or just feels off, drop me a line at **halicon@gmail.com**, or open an issue on GitHub. I'd rather hear it early than ship 1.0 with it still in there.
+This is a release candidate precisely because the best bugs are found by other people. If you try Mycelium Desktop and something breaks, surprises you, or just feels off, drop me a line at **halicon@gmail.com**, or open an issue on GitHub. I'd rather hear it early than ship 1.0 with it still in there.
 
 ---
 
