@@ -10,6 +10,8 @@ Built with Tauri, React, and Rust.
 
 ## What is Mycelium?
 
+![Mycelium Desktop — vault registry](public/screenshot.png)  
+
 **Mycelium is a persistent memory framework for AI assistants.** It's a way to give a model like Claude long-term context that survives across sessions, projects, and machines. A **Mycelium vault** is a folder of structured markdown that describes a person, their work, their relationships, and their intent. Claude reads the vault at the start of every session and arrives knowing who you are and what you're working on — no re-onboarding, no lost context.
 
 **This app is the desktop companion** for managing those vaults. It doesn't run the AI — it runs the *operations* around the AI: vault registration, health checks, terminal launching, install and upgrade flows, persona file management. One native window, all your vaults, one click to any of them.
