@@ -107,17 +107,6 @@ html, body, #root {
   letter-spacing: -0.02em;
 }
 
-.cli-status-inline {
-  display: flex;
-  align-items: center;
-  align-self: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.cli-status-inline.cli-status--ok { color: var(--green); }
-.cli-status-inline.cli-status--error { color: var(--red); }
-
 .app-version-footer {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -773,10 +762,10 @@ button {
   text-align: center;
 }
 
-.first-run-icon {
-  font-size: 60px;
-  color: var(--text-dim);
-  line-height: 1;
+.first-run-icon-img {
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
 }
 
 .first-run-content h1 {
@@ -1055,9 +1044,8 @@ select.settings-input {
 
 .theme-light .app-name { color: #1a1a1e; }
 
-.theme-light .cli-status-inline { color: var(--text-dim); }
-.theme-light .cli-status-inline.cli-status--ok { color: var(--green); }
-.theme-light .cli-status-inline.cli-status--error { color: var(--red); }
+.theme-light .settings-credit a { color: var(--accent); }
+.theme-light .settings-credit a:hover { color: var(--accent-hover); }
 
 .theme-light .app-shell {
   background: linear-gradient(160deg, #f0f0f2 0%, #e8e8ec 50%, #f0f0f2 100%);

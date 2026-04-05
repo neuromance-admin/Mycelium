@@ -3,11 +3,11 @@ import "./App.css";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Terminal, Bot, Folder, NotebookPen, X, SlidersHorizontal, User } from "lucide-react";
-import mushroomIcon from "./assets/mushroom.png";
+import mushroomIcon from "./assets/mushroomIcon.svg";
 
 // ─── Version ───────────────────────────────────────────────────────────────
 
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "1.0.0-rc.1";
 
 // ─── Vault colour palette ──────────────────────────────────────────────────
 
@@ -48,23 +48,22 @@ interface RustVaultIdentity {
   persona_dir: string;
 }
 
-interface CliStatus {
-  installed: boolean;
-  version: string;
-}
-
 interface AppSettings {
   defaultTerminal: string;
-  claudeCliPath: string;
   theme: string;
   vaultScanOnLaunch: boolean;
+}
+
+interface TerminalApp {
+  id: string;
+  name: string;
+  path: string;
 }
 
 // ─── Defaults ──────────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultTerminal: "Terminal",
-  claudeCliPath: "claude",
+  defaultTerminal: "terminal",
   theme: "dark",
   vaultScanOnLaunch: true,
 };
@@ -86,7 +85,15 @@ function saveVaults(vaults: Vault[]) {
 function loadSettings(): AppSettings {
   try {
     const stored = localStorage.getItem("vmd-settings");
-    if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      // Migrate legacy capitalised terminal ids ("Terminal", "iTerm") to lowercase
+      const legacyTerminal: Record<string, string> = { Terminal: "terminal", iTerm: "iterm" };
+      if (parsed.defaultTerminal && legacyTerminal[parsed.defaultTerminal]) {
+        parsed.defaultTerminal = legacyTerminal[parsed.defaultTerminal];
+      }
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
   } catch {}
   return DEFAULT_SETTINGS;
 }
@@ -173,10 +180,24 @@ function SettingsModal({
   onClose: () => void;
 }) {
   const [local, setLocal] = useState<AppSettings>({ ...settings });
+  const [terminals, setTerminals] = useState<TerminalApp[]>([]);
 
   const update = (key: keyof AppSettings, value: string | boolean) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
   };
+
+  useEffect(() => {
+    invoke<TerminalApp[]>("list_terminals")
+      .then((found) => {
+        setTerminals(found);
+        // If the saved terminal isn't in the detected list, fall back to the first one found
+        if (found.length > 0 && !found.some((t) => t.id === local.defaultTerminal)) {
+          setLocal((prev) => ({ ...prev, defaultTerminal: found[0].id }));
+        }
+      })
+      .catch((err) => console.error("Failed to list terminals:", err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -193,19 +214,13 @@ function SettingsModal({
               value={local.defaultTerminal}
               onChange={(e) => update("defaultTerminal", e.target.value)}
             >
-              <option value="Terminal">Terminal.app</option>
-              <option value="iTerm">iTerm2</option>
+              {terminals.length === 0 && (
+                <option value={local.defaultTerminal}>Detecting…</option>
+              )}
+              {terminals.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
             </select>
-          </label>
-          <label className="settings-field">
-            <span className="settings-label">Claude CLI Path</span>
-            <input
-              className="settings-input"
-              type="text"
-              value={local.claudeCliPath}
-              onChange={(e) => update("claudeCliPath", e.target.value)}
-              placeholder="claude"
-            />
           </label>
           <label className="settings-field">
             <span className="settings-label">Theme</span>
@@ -231,7 +246,6 @@ function SettingsModal({
           <div className="settings-credits">
             <span className="settings-credits-title">Credits</span>
             <span className="settings-credit">Mycelium made by <a href="https://www.neuromance.co.za/" target="_blank" rel="noreferrer">neuromance</a></span>
-            <span className="settings-credit">Mushroom app icon by <a href="https://www.vecteezy.com/png/17345522-mushroom-isolated-on-transparent" target="_blank" rel="noreferrer">Muharrem Adak</a></span>
             <span className="settings-credit">Icons by <a href="https://lucide.dev/" target="_blank" rel="noreferrer">Lucide</a></span>
             <span className="settings-credit">App framework by <a href="https://tauri.app/" target="_blank" rel="noreferrer">Tauri</a></span>
             <span className="settings-credit">UI by <a href="https://react.dev/" target="_blank" rel="noreferrer">React</a></span>
@@ -251,14 +265,12 @@ function SettingsModal({
 
 function TopBar({
   vaults,
-  cliStatus,
   onOpenOwnerPersona,
   onOpenAiPersona,
   onShowWarnings,
   onShowSettings,
 }: {
   vaults: Vault[];
-  cliStatus: CliStatus | null;
   onOpenOwnerPersona: () => void;
   onOpenAiPersona: () => void;
   onShowWarnings: () => void;
@@ -272,12 +284,6 @@ function TopBar({
       <div className="top-bar-left">
         <img src={mushroomIcon} alt="Mycelium" className="app-logo" />
         <span className="app-name">Mycelium</span>
-        {cliStatus !== null && (
-          <span className={`cli-status-inline cli-status--${cliStatus.installed ? "ok" : "error"}`}>
-            <span className={`health-dot health-${cliStatus.installed ? "healthy" : "error"}`} />
-            Claude CLI {cliStatus.installed && cliStatus.version ? `v${cliStatus.version}` : ""}
-          </span>
-        )}
       </div>
       <div className="top-bar-right">
         <button className="btn-persona" onClick={onOpenOwnerPersona} title="Open Owner persona in Obsidian">
@@ -426,7 +432,7 @@ function FirstRun({ onAdd, onInstall }: { onAdd: () => void; onInstall: () => vo
   return (
     <div className="first-run">
       <div className="first-run-content">
-        <div className="first-run-icon">⬡</div>
+        <img src={mushroomIcon} alt="Mycelium" className="first-run-icon-img" />
         <h1>Mycelium</h1>
         <p className="first-run-subtitle">No vaults registered yet.</p>
         <div className="first-run-buttons">
@@ -442,17 +448,10 @@ function FirstRun({ onAdd, onInstall }: { onAdd: () => void; onInstall: () => vo
 
 export default function App() {
   const [vaults, setVaults] = useState<Vault[]>(loadVaults);
-  const [cliStatus, setCliStatus] = useState<CliStatus | null>(null);
   const [showWarnings, setShowWarnings] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [personaPaths, setPersonaPaths] = useState<{ owner: string; ai: string } | null>(null);
-
-  useEffect(() => {
-    invoke<CliStatus>("check_claude_cli")
-      .then(setCliStatus)
-      .catch(() => setCliStatus({ installed: false, version: "" }));
-  }, []);
 
   // Resolve persona paths from the first vault that has them
   useEffect(() => {
@@ -533,12 +532,12 @@ export default function App() {
   }, []);
 
   const handleOpen = useCallback((vault: Vault) => {
-    invoke("open_in_terminal", { path: vault.path, launchClaude: true }).catch(console.error);
-  }, []);
+    invoke("open_in_terminal", { path: vault.path, launchClaude: true, terminalApp: settings.defaultTerminal }).catch(console.error);
+  }, [settings.defaultTerminal]);
 
   const handleTerminal = useCallback((vault: Vault) => {
-    invoke("open_in_terminal", { path: vault.path, launchClaude: false }).catch(console.error);
-  }, []);
+    invoke("open_in_terminal", { path: vault.path, launchClaude: false, terminalApp: settings.defaultTerminal }).catch(console.error);
+  }, [settings.defaultTerminal]);
 
   const handleOpenFinder = useCallback((vault: Vault) => {
     invoke("open_in_finder", { path: vault.path }).catch(console.error);
@@ -563,12 +562,12 @@ export default function App() {
   const handleInstallVault = useCallback(async () => {
     const selected = await openDialog({ directory: true, multiple: false, title: "Select folder for new vault" });
     if (!selected || typeof selected !== "string") return;
-    invoke("install_vault", { path: selected }).catch(console.error);
-  }, []);
+    invoke("install_vault", { path: selected, terminalApp: settings.defaultTerminal }).catch(console.error);
+  }, [settings.defaultTerminal]);
 
   const handleUpgrade = useCallback((vault: Vault) => {
-    invoke("upgrade_vault", { path: vault.path }).catch(console.error);
-  }, []);
+    invoke("upgrade_vault", { path: vault.path, terminalApp: settings.defaultTerminal }).catch(console.error);
+  }, [settings.defaultTerminal]);
 
   const handleSaveSettings = useCallback((s: AppSettings) => {
     setSettings(s);
@@ -587,7 +586,6 @@ export default function App() {
     <div className={`app-shell ${settings.theme === "light" ? "theme-light" : ""}`}>
       <TopBar
         vaults={vaults}
-        cliStatus={cliStatus}
         onOpenOwnerPersona={handleOpenOwnerPersona}
         onOpenAiPersona={handleOpenAiPersona}
         onShowWarnings={() => setShowWarnings(true)}
