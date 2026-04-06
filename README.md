@@ -134,6 +134,28 @@ The `resources/` directory ships the current Spore runtime files inside the app 
 
 ---
 
+## What's coming
+
+Mycelium Desktop is actively developed. Here's what's on the roadmap:
+
+### Native vault tools
+
+The Spore runtime ships with a full toolset that currently runs through the AI in conversation — vault audits, health checks, network layer management, migration, and standards enforcement. We're bringing all of them into the Desktop app as native operations.
+
+- **Audit** — full vault diagnostic from the UI: coverage, integrity, broken links, orphans, persona health, overview staleness. Review and resolve findings without a Claude session.
+- **Health Check** — lightweight index integrity, frontmatter sampling, persona resolution, orphan detection, and root cleanliness. One click, instant report.
+- **Network Layer** — peer registration, collaborator management, guest IDs, and propagation rules managed visually instead of through conversation.
+- **Migration** — version upgrades triggered and tracked from the app, with rollback visibility and health check on completion.
+- **Standards** — ID validation, node schema enforcement, and category conventions surfaced as warnings and quick-fixes in the vault view.
+
+The goal: everything the AI can do operationally, the app can do natively — faster, without spending tokens, and without needing a session open.
+
+### Vault backups
+
+One-click backup for any individual vault or all registered vaults at once. Your memory is your most valuable asset — it should be trivial to snapshot and safeguard it.
+
+---
+
 ## Feedback
 
 This is a release candidate precisely because the best bugs are found by other people. If you try Mycelium Desktop and something breaks, surprises you, or just feels off, drop me a line at **halicon@gmail.com**, or open an issue on GitHub. I'd rather hear it early than ship 1.0 with it still in there.
