@@ -60,6 +60,13 @@ interface TerminalApp {
   path: string;
 }
 
+interface SporeRelease {
+  version: string;
+  installer_filename: string | null;
+  upgrade_filename: string | null;
+  folder_path: string;
+}
+
 // ─── Defaults ──────────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -242,6 +249,15 @@ function SettingsModal({
             />
             <span className="settings-label">Scan vaults on launch</span>
           </label>
+          <label className="settings-field">
+            <span className="settings-label">Spore Releases Folder</span>
+            <button
+              className="btn-action"
+              onClick={() => invoke("open_spore_folder").catch(console.error)}
+            >
+              Open in Finder
+            </button>
+          </label>
           <div className="settings-divider" />
           <div className="settings-credits">
             <span className="settings-credits-title">Credits</span>
@@ -368,6 +384,7 @@ function VaultCard({
 
 function VaultRegistry({
   vaults,
+  sporeRelease,
   onOpen,
   onTerminal,
   onRemove,
@@ -378,6 +395,7 @@ function VaultRegistry({
   onUpgrade,
 }: {
   vaults: Vault[];
+  sporeRelease: SporeRelease | null;
   onOpen: (vault: Vault) => void;
   onTerminal: (vault: Vault) => void;
   onRemove: (vault: Vault) => void;
@@ -421,7 +439,7 @@ function VaultRegistry({
           />
         ))}
       </div>
-      <div className="app-version-footer">Mycelium v{APP_VERSION}</div>
+      <div className="app-version-footer">Mycelium v{APP_VERSION}{sporeRelease ? ` · Spore v${sporeRelease.version}` : ""}</div>
     </main>
   );
 }
@@ -452,6 +470,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [personaPaths, setPersonaPaths] = useState<{ owner: string; ai: string } | null>(null);
+  const [sporeRelease, setSporeRelease] = useState<SporeRelease | null>(null);
 
   // Resolve persona paths from the first vault that has them
   useEffect(() => {
@@ -469,6 +488,13 @@ export default function App() {
       })
       .catch(() => {});
   }, [vaults]);
+
+  // Fetch latest spore release info
+  useEffect(() => {
+    invoke<SporeRelease>("get_spore_release")
+      .then(setSporeRelease)
+      .catch((err) => console.error("Failed to get spore release:", err));
+  }, []);
 
   // Refresh vault health from disk on every launch
   useEffect(() => {
@@ -593,6 +619,7 @@ export default function App() {
       />
       <VaultRegistry
         vaults={vaults}
+        sporeRelease={sporeRelease}
         onOpen={handleOpen}
         onTerminal={handleTerminal}
         onRemove={handleRemoveVault}

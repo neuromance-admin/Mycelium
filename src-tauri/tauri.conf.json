@@ -27,8 +27,8 @@
     "active": true,
     "targets": "all",
     "resources": [
-      "resources/_MyceliumInstaller-v0.5.1b.md",
-      "resources/_SporeUpgrade-v0.5.1b.md"
+      "resources/_MyceliumInstaller-v*.md",
+      "resources/_SporeUpgrade-v*.md"
     ],
     "icon": [
       "icons/32x32.png",

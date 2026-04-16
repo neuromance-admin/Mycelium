@@ -1,4 +1,180 @@
 use tauri::Manager;
+use std::cmp::Ordering;
+
+// ─── Spore Version Parsing ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SporeVersion {
+    major: u32,
+    minor: u32,
+    patch: u32,
+    suffix: Option<char>, // 'a', 'b', 'c'… None if absent
+}
+
+impl SporeVersion {
+    fn parse(s: &str) -> Option<SporeVersion> {
+        let parts: Vec<&str> = s.split('.').collect();
+        if parts.len() != 3 {
+            return None;
+        }
+        let major = parts[0].parse::<u32>().ok()?;
+        let minor = parts[1].parse::<u32>().ok()?;
+
+        let last = parts[2];
+        let (num_part, suffix) = if last.chars().last().map_or(false, |c| c.is_ascii_lowercase()) {
+            let split = last.len() - 1;
+            let num = &last[..split];
+            let ch = last.chars().last().unwrap();
+            (num, Some(ch))
+        } else {
+            (last, None)
+        };
+
+        let patch = num_part.parse::<u32>().ok()?;
+        Some(SporeVersion { major, minor, patch, suffix })
+    }
+}
+
+impl Ord for SporeVersion {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.major
+            .cmp(&other.major)
+            .then(self.minor.cmp(&other.minor))
+            .then(self.patch.cmp(&other.patch))
+            .then(self.suffix.cmp(&other.suffix))
+    }
+}
+
+impl PartialOrd for SporeVersion {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+// ─── Spore Folder (external release directory) ───────────────────────────
+
+#[derive(serde::Serialize, Clone)]
+struct SporeRelease {
+    version: String,
+    installer_filename: Option<String>,
+    upgrade_filename: Option<String>,
+    folder_path: String,
+}
+
+fn get_spore_folder(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let app_data = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
+    Ok(app_data.join("spore-releases"))
+}
+
+fn ensure_spore_folder(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let spore_dir = get_spore_folder(app_handle)?;
+
+    if !spore_dir.exists() {
+        std::fs::create_dir_all(&spore_dir)
+            .map_err(|e| format!("Failed to create spore folder: {}", e))?;
+    }
+
+    // Check if folder has any matching .md files
+    let has_files = std::fs::read_dir(&spore_dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .any(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            name.starts_with("_MyceliumInstaller-v") || name.starts_with("_SporeUpgrade-v")
+        });
+
+    if !has_files {
+        // Seed from bundled resources
+        let resource_dir = app_handle.path().resource_dir().map_err(|e| e.to_string())?;
+        let resources = resource_dir.join("resources");
+        if resources.exists() {
+            if let Ok(entries) = std::fs::read_dir(&resources) {
+                for entry in entries.filter_map(|e| e.ok()) {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with("_MyceliumInstaller-v") || name.starts_with("_SporeUpgrade-v") {
+                        let _ = std::fs::copy(entry.path(), spore_dir.join(&name));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(spore_dir)
+}
+
+fn scan_spore_folder(spore_dir: &std::path::Path) -> Result<SporeRelease, String> {
+    let entries = std::fs::read_dir(spore_dir).map_err(|e| e.to_string())?;
+
+    let mut best_version: Option<SporeVersion> = None;
+    let mut best_version_str = String::new();
+    let mut installer: Option<String> = None;
+    let mut upgrade: Option<String> = None;
+
+    for entry in entries.filter_map(|e| e.ok()) {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !name.ends_with(".md") {
+            continue;
+        }
+
+        let ver_str = if let Some(rest) = name.strip_prefix("_MyceliumInstaller-v") {
+            rest.strip_suffix(".md")
+        } else if let Some(rest) = name.strip_prefix("_SporeUpgrade-v") {
+            rest.strip_suffix(".md")
+        } else {
+            None
+        };
+
+        if let Some(ver_str) = ver_str {
+            if let Some(parsed) = SporeVersion::parse(ver_str) {
+                let is_newer = best_version.as_ref().map_or(true, |best| parsed > *best);
+                if is_newer {
+                    best_version = Some(parsed);
+                    best_version_str = ver_str.to_string();
+                    // Reset filenames for the new best version
+                    installer = None;
+                    upgrade = None;
+                }
+                // Collect filenames that match the best version
+                if best_version.as_ref().map_or(false, |best| SporeVersion::parse(ver_str).as_ref() == Some(best)) {
+                    if name.starts_with("_MyceliumInstaller-v") {
+                        installer = Some(name.clone());
+                    } else if name.starts_with("_SporeUpgrade-v") {
+                        upgrade = Some(name.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    if best_version.is_none() {
+        return Err("No Spore release files found in spore-releases folder".to_string());
+    }
+
+    Ok(SporeRelease {
+        version: best_version_str,
+        installer_filename: installer,
+        upgrade_filename: upgrade,
+        folder_path: spore_dir.to_string_lossy().to_string(),
+    })
+}
+
+// ─── Spore Tauri Commands ────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_spore_release(app_handle: tauri::AppHandle) -> Result<SporeRelease, String> {
+    let spore_dir = ensure_spore_folder(&app_handle)?;
+    scan_spore_folder(&spore_dir)
+}
+
+#[tauri::command]
+fn open_spore_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let spore_dir = ensure_spore_folder(&app_handle)?;
+    std::process::Command::new("open")
+        .arg(spore_dir)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 // ─── Vault Identity ────────────────────────────────────────────────────────
 
@@ -15,7 +191,7 @@ struct VaultIdentity {
 }
 
 #[tauri::command]
-fn read_vault_identity(path: String) -> Result<VaultIdentity, String> {
+fn read_vault_identity(app_handle: tauri::AppHandle, path: String) -> Result<VaultIdentity, String> {
     let identity_path = std::path::Path::new(&path).join("System/VaultIdentity.md");
     let content = std::fs::read_to_string(&identity_path)
         .map_err(|e| format!("Cannot read VaultIdentity.md: {}", e))?;
@@ -75,19 +251,48 @@ fn read_vault_identity(path: String) -> Result<VaultIdentity, String> {
             .to_string();
     }
 
+    // Determine health via semantic version comparison against spore-releases folder
     let (health, health_message) = if spore_version.is_empty() {
         ("warning".to_string(), "Spore version not detected".to_string())
-    } else if spore_version != "0.5.1b" {
-        ("warning".to_string(), format!("Spore upgrade needed ({} → 0.5.1b)", spore_version))
-    } else if persona_mode == "external" && !persona_dir.is_empty() {
-        let resolved = std::path::Path::new(&path).join(&persona_dir);
-        if !resolved.exists() {
-            ("warning".to_string(), "Persona directory not found".to_string())
-        } else {
-            ("healthy".to_string(), String::new())
-        }
     } else {
-        ("healthy".to_string(), String::new())
+        let spore_dir = get_spore_folder(&app_handle);
+        let release = spore_dir.ok().and_then(|dir| scan_spore_folder(&dir).ok());
+
+        if let Some(ref release) = release {
+            let vault_ver = SporeVersion::parse(&spore_version);
+            let latest_ver = SporeVersion::parse(&release.version);
+
+            match (vault_ver, latest_ver) {
+                (Some(v), Some(l)) if v < l => {
+                    ("warning".to_string(), format!("Spore upgrade available ({} \u{2192} {})", spore_version, release.version))
+                }
+                _ => {
+                    // Equal, newer, or unparseable — don't flag
+                    if persona_mode == "external" && !persona_dir.is_empty() {
+                        let resolved = std::path::Path::new(&path).join(&persona_dir);
+                        if !resolved.exists() {
+                            ("warning".to_string(), "Persona directory not found".to_string())
+                        } else {
+                            ("healthy".to_string(), String::new())
+                        }
+                    } else {
+                        ("healthy".to_string(), String::new())
+                    }
+                }
+            }
+        } else {
+            // Could not read spore folder — skip version check, still check persona
+            if persona_mode == "external" && !persona_dir.is_empty() {
+                let resolved = std::path::Path::new(&path).join(&persona_dir);
+                if !resolved.exists() {
+                    ("warning".to_string(), "Persona directory not found".to_string())
+                } else {
+                    ("healthy".to_string(), String::new())
+                }
+            } else {
+                ("healthy".to_string(), String::new())
+            }
+        }
     };
 
     Ok(VaultIdentity { vmd_id, vault_name, ai_name, spore_version, persona_mode, persona_dir, health, health_message })
@@ -236,15 +441,30 @@ fn open_terminal_at_path(terminal_id: &str, path: &str) -> Result<(), String> {
     }
 }
 
+/// Find the _Spore-v*.md file in a vault root directory.
+fn find_spore_file(vault_path: &str) -> Option<String> {
+    let dir = std::path::Path::new(vault_path);
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with("_Spore-v") && name.ends_with(".md") && !name.contains("Toolset") && !name.contains("Upgrade") {
+                return Some(name);
+            }
+        }
+    }
+    None
+}
+
 #[tauri::command]
 fn open_in_terminal(path: String, launch_claude: bool, terminal_app: String) -> Result<(), String> {
     if launch_claude {
         // Connect mode requires command execution. Only Terminal.app and iTerm2 support it
         // reliably — route others through Terminal.app so the Claude session still lands.
         let safe_path = path.replace('\'', "'\\''");
+        let spore_file = find_spore_file(&path).unwrap_or_else(|| "_Spore-v0.5.1b.md".to_string());
         let shell_cmd = format!(
-            "cd '{}' && claude 'Read _Spore-v0.5.1b.md and run it as the vault runtime. Perform the full bootstrap check, lifecycle detection, and complete read sequence. End with the handshake.'",
-            safe_path
+            "cd '{}' && claude 'Read {} and run it as the vault runtime. Perform the full bootstrap check, lifecycle detection, and complete read sequence. End with the handshake.'",
+            safe_path, spore_file
         );
         let target = if terminal_app == "iterm" { "iterm" } else { "terminal" };
         run_shell_in_terminal(target, &shell_cmd)
@@ -257,22 +477,23 @@ fn open_in_terminal(path: String, launch_claude: bool, terminal_app: String) -> 
 
 #[tauri::command]
 fn install_vault(app_handle: tauri::AppHandle, path: String, terminal_app: String) -> Result<(), String> {
-    // Copy bundled installer file into the chosen directory
-    let resource_path = app_handle
-        .path()
-        .resource_dir()
-        .map_err(|e| e.to_string())?
-        .join("resources/_MyceliumInstaller-v0.5.1b.md");
-    let dest = std::path::Path::new(&path).join("_MyceliumInstaller-v0.5.1b.md");
-    std::fs::copy(&resource_path, &dest)
+    // Get latest installer from spore-releases folder
+    let spore_dir = ensure_spore_folder(&app_handle)?;
+    let release = scan_spore_folder(&spore_dir)?;
+    let installer_name = release.installer_filename
+        .ok_or("No installer file found in spore-releases folder")?;
+
+    // Copy installer file into the chosen directory
+    let source = spore_dir.join(&installer_name);
+    let dest = std::path::Path::new(&path).join(&installer_name);
+    std::fs::copy(&source, &dest)
         .map_err(|e| format!("Failed to copy installer file: {}", e))?;
 
     // Run Claude against the installer file in the user's chosen terminal
-    // (falls back to Terminal.app for terminals without scripted command injection)
     let safe_path = path.replace('\'', "'\\''");
     let shell_cmd = format!(
-        "cd '{}' && claude 'Read _MyceliumInstaller-v0.5.1b.md and execute the install procedure.'",
-        safe_path
+        "cd '{}' && claude 'Read {} and execute the install procedure.'",
+        safe_path, installer_name
     );
     let target = if terminal_app == "iterm" { "iterm" } else { "terminal" };
     run_shell_in_terminal(target, &shell_cmd)
@@ -282,21 +503,23 @@ fn install_vault(app_handle: tauri::AppHandle, path: String, terminal_app: Strin
 
 #[tauri::command]
 fn upgrade_vault(app_handle: tauri::AppHandle, path: String, terminal_app: String) -> Result<(), String> {
-    // Copy bundled upgrade file into the vault root
-    let resource_path = app_handle
-        .path()
-        .resource_dir()
-        .map_err(|e| e.to_string())?
-        .join("resources/_SporeUpgrade-v0.5.1b.md");
-    let dest = std::path::Path::new(&path).join("_SporeUpgrade-v0.5.1b.md");
-    std::fs::copy(&resource_path, &dest)
+    // Get latest upgrade file from spore-releases folder
+    let spore_dir = ensure_spore_folder(&app_handle)?;
+    let release = scan_spore_folder(&spore_dir)?;
+    let upgrade_name = release.upgrade_filename
+        .ok_or("No upgrade file found in spore-releases folder")?;
+
+    // Copy upgrade file into the vault root
+    let source = spore_dir.join(&upgrade_name);
+    let dest = std::path::Path::new(&path).join(&upgrade_name);
+    std::fs::copy(&source, &dest)
         .map_err(|e| format!("Failed to copy upgrade file: {}", e))?;
 
     // Run Claude against the upgrade file in the user's chosen terminal
     let safe_path = path.replace('\'', "'\\''");
     let shell_cmd = format!(
-        "cd '{}' && claude 'Read _SporeUpgrade-v0.5.1b.md and execute the upgrade procedure.'",
-        safe_path
+        "cd '{}' && claude 'Read {} and execute the upgrade procedure.'",
+        safe_path, upgrade_name
     );
     let target = if terminal_app == "iterm" { "iterm" } else { "terminal" };
     run_shell_in_terminal(target, &shell_cmd)
@@ -328,6 +551,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            let _ = ensure_spore_folder(&app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             read_vault_identity,
             list_terminals,
@@ -337,6 +564,8 @@ pub fn run() {
             install_vault,
             upgrade_vault,
             open_persona_in_obsidian,
+            get_spore_release,
+            open_spore_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
