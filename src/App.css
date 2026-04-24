@@ -66,6 +66,8 @@ html, body, #root {
 /* ─── Top Bar ────────────────────────────────────────────────────── */
 
 .top-bar {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -85,19 +87,28 @@ html, body, #root {
   -webkit-app-region: drag;
 }
 
+.top-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("./assets/header-bg.jpg");
+  background-size: cover;
+  background-position: left center;
+  mask-image: linear-gradient(to right, black 0%, black 35%, transparent 80%);
+  -webkit-mask-image: linear-gradient(to right, black 0%, black 35%, transparent 80%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .top-bar-left,
 .top-bar-right {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12px;
   -webkit-app-region: no-drag;
-}
-
-.app-logo {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-  margin-left: -5px;
 }
 
 .app-name {
@@ -762,10 +773,12 @@ button {
   text-align: center;
 }
 
-.first-run-icon-img {
-  width: 150px;
-  height: 150px;
-  object-fit: contain;
+.first-run-hero-img {
+  width: 100%;
+  max-width: 520px;
+  height: auto;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
 .first-run-content h1 {

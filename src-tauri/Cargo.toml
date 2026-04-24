@@ -1,6 +1,6 @@
 [package]
 name = "mycelium"
-version = "1.0.0-rc.1"
+version = "1.0.1-beta"
 description = "Mycelium — Vault Management Desktop"
 authors = ["neuromance"]
 edition = "2021"

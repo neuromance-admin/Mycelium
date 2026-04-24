@@ -3,11 +3,11 @@ import "./App.css";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { Terminal, Bot, Folder, NotebookPen, X, SlidersHorizontal, User } from "lucide-react";
-import mushroomIcon from "./assets/mushroomIcon.svg";
+import firstRunHero from "./assets/first-run-hero.jpg";
 
 // ─── Version ───────────────────────────────────────────────────────────────
 
-const APP_VERSION = "1.0.0-rc.1";
+const APP_VERSION = "1.0.1-beta";
 
 // ─── Vault colour palette ──────────────────────────────────────────────────
 
@@ -298,7 +298,6 @@ function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-left">
-        <img src={mushroomIcon} alt="Mycelium" className="app-logo" />
         <span className="app-name">Mycelium</span>
       </div>
       <div className="top-bar-right">
@@ -446,17 +445,21 @@ function VaultRegistry({
 
 // ─── FirstRun ──────────────────────────────────────────────────────────────
 
-function FirstRun({ onAdd, onInstall }: { onAdd: () => void; onInstall: () => void }) {
+function FirstRun({ onAdd, onInstall, splash = false }: { onAdd: () => void; onInstall: () => void; splash?: boolean }) {
   return (
     <div className="first-run">
       <div className="first-run-content">
-        <img src={mushroomIcon} alt="Mycelium" className="first-run-icon-img" />
+        <img src={firstRunHero} alt="Mycelium" className="first-run-hero-img" />
         <h1>Mycelium</h1>
-        <p className="first-run-subtitle">No vaults registered yet.</p>
-        <div className="first-run-buttons">
-          <button className="btn-primary btn-primary--large" onClick={onAdd}>+ Add New Vault</button>
-          <button className="btn-primary btn-primary--large" onClick={onInstall}>+ Install New Vault</button>
-        </div>
+        {!splash && (
+          <>
+            <p className="first-run-subtitle">No vaults registered yet.</p>
+            <div className="first-run-buttons">
+              <button className="btn-primary btn-primary--large" onClick={onAdd}>+ Add New Vault</button>
+              <button className="btn-primary btn-primary--large" onClick={onInstall}>+ Install New Vault</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -471,6 +474,12 @@ export default function App() {
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [personaPaths, setPersonaPaths] = useState<{ owner: string; ai: string } | null>(null);
   const [sporeRelease, setSporeRelease] = useState<SporeRelease | null>(null);
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Resolve persona paths from the first vault that has them
   useEffect(() => {
@@ -606,7 +615,7 @@ export default function App() {
     document.documentElement.className = settings.theme === "light" ? "theme-light" : "";
   }, []);
 
-  if (vaults.length === 0) return <FirstRun onAdd={handleAddVault} onInstall={handleInstallVault} />;
+  if (showSplash || vaults.length === 0) return <FirstRun splash={showSplash} onAdd={handleAddVault} onInstall={handleInstallVault} />;
 
   return (
     <div className={`app-shell ${settings.theme === "light" ? "theme-light" : ""}`}>
